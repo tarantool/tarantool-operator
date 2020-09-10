@@ -3,22 +3,22 @@ entries:
   cartridge:
   - apiVersion: v1
     appVersion: "1.0"
-    created: "2020-09-10T13:42:27.045868+03:00"
+    created: "2020-09-10T16:58:24.219548+03:00"
     description: A Helm chart for tarantool
-    digest: e329588120878c21c623af815ad004b3c1d4f751b5f4b26edc1c319429a427fe
+    digest: 4d64c366b6e97ef77cae68f7a8225843bc575ef2aa0afb744746dd86e527ed17
     name: cartridge
     urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/cartridge-0.0.3/cartridge-0.0.3.tgz
-    version: 0.0.3
+    - https://github.com/tarantool/tarantool-operator/releases/download/cartridge-0.0.4/cartridge-0.0.4.tgz
+    version: 0.0.4
   tarantool-operator:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-09-10T13:42:27.271669+03:00"
+    created: "2020-09-10T16:58:24.46789+03:00"
     description: kubernetes tarantool operator
-    digest: fe7b26f031c00f090d57aa67fd2a3df77edcc5d5b7a0c43e2bdd892fc2cb5e84
+    digest: a72ad7d8b04adba311d4599437c5d1bf90ceeff3ffef4e206ec4cb8bd648b9db
     name: tarantool-operator
     type: application
     urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.3/tarantool-operator-0.0.3.tgz
-    version: 0.0.3
-generated: "2020-09-10T13:42:26.679824+03:00"
+    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.4/tarantool-operator-0.0.4.tgz
+    version: 0.0.4
+generated: "2020-09-10T16:58:23.790193+03:00"
