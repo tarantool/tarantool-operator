@@ -144,6 +144,11 @@ type ReconcileCluster struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Possible cluster status:
+//    - JoinError:            Error join nodes in the cluster
+//    - SetWeightError:       Error set replicasets weight
+//    - BootstrapVshardError: Error bootstrap vshard in cluster
+//    - Ready:                Cluster ready to operations
 func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Cluster")
@@ -156,6 +161,11 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+	}
+
+	SetClusterStatus := func(s string) {
+		cluster.Status.State = s
+		r.client.Status().Update(context.TODO(), cluster)
 	}
 
 	clusterSelector, err := metav1.LabelSelectorAsSelector(cluster.Spec.Selector)
@@ -309,7 +319,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			if tarantool.IsJoined(pod) {
 				continue
 			}
-
 			if err := topologyClient.Join(pod); err != nil {
 				if topology.IsAlreadyJoined(err) {
 					tarantool.MarkJoined(pod)
@@ -325,6 +334,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					continue
 				}
 
+				SetClusterStatus("JoinError")
 				reqLogger.Error(err, "Join error")
 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 			} else {
@@ -333,7 +343,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 				}
 			}
-
 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 		}
 	}
@@ -391,6 +400,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		if err := topologyClient.SetWeight(sts.GetLabels()["tarantool.io/replicaset-uuid"], weight); err != nil {
+			SetClusterStatus("SetWeightError")
 			return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 		}
 
@@ -425,6 +435,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 				}
 
+				SetClusterStatus("BootstrapVshardError")
 				reqLogger.Error(err, "Bootstrap vshard error")
 				return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 			}
@@ -448,6 +459,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 	}
-
+	SetClusterStatus("Ready")
 	return reconcile.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 }
