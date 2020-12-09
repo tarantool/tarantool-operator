@@ -6,3 +6,7 @@ image:
   repository: tarantool/tarantool-operator
   tag: 0.0.6
   pullPolicy: IfNotPresent
+
+limits:
+  CPUallocation: 0.5
+  MemoryMB: 256

@@ -19,6 +19,10 @@ spec:
       containers:
         - name: tarantool-operator
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          resources:
+            limits:
+              cpu: "{{ .Values.limits.CPUallocation }}"
+              memory: "{{ .Values.limits.MemoryMB }}M"
           command:
             - tarantool-operator
           env:
