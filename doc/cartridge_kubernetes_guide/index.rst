@@ -7,8 +7,6 @@ Tarantool Cartridge on Kubernetes
 This guide covers the full life cycle of a Tarantool Cartridge app--from
 developing the app to operating it on Kubernetes.
 
-.. contents::
-
 .. _cartridge_kubernetes_installing_tools:
 
 --------------------------------------------------------------------------------
