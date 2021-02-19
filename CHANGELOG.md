@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Requested verbs for a RBAC role Tarantool: remove all * verbs and resources
+- Security context for using non-priveleged containers
 
 ### Fixed
 - Not working update of replicaset roles
