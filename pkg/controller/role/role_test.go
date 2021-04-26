@@ -112,6 +112,33 @@ var _ = Describe("role_controller unit testing", func() {
 				Expect(sts.Spec.Template.Annotations["tarantool.io/rolesToAssign"]).To(Equal(defaultRolesToAssign))
 			})
 
+			It("set pod affinity rules by creating sts-template", func() {
+				sts := &appsv1.StatefulSet{}
+				By("get statefulset")
+				Eventually(
+					func() bool {
+						if k8sClient.Get(ctx, client.ObjectKey{Name: stsName, Namespace: namespace}, sts) != nil {
+							return false
+						}
+						if sts.Spec.Template.Spec.Affinity == nil || sts.Spec.Template.Spec.Affinity.PodAntiAffinity == nil {
+							return false
+						}
+						return true
+					},
+					time.Second*10, time.Millisecond*500,
+				).Should(BeTrue())
+
+				By("check PodAntiAffinity in sts")
+				Expect(len(sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution)).To(Equal(1))
+				rule := sts.Spec.Template.Spec.Affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0]
+
+				Expect(rule.Weight).To(Equal(int32(100)))
+				Expect(rule.PodAffinityTerm.TopologyKey).To(Equal("kubernetes.io/hostname"))
+				Expect(len(rule.PodAffinityTerm.LabelSelector.MatchExpressions)).To(Equal(1))
+				Expect(rule.PodAffinityTerm.LabelSelector.MatchExpressions[0].Key).To(Equal("tarantool.io/replicaset-uuid"))
+				Expect(rule.PodAffinityTerm.LabelSelector.MatchExpressions[0].Operator).To(Equal(metav1.LabelSelectorOpIn))
+			})
+
 			It("set roleToAssign by updating sts-template", func() {
 				By("update rolesToAssign annotations in ReplicasetTemplate")
 				rsTemplate := &tarantoolv1alpha1.ReplicasetTemplate{}
