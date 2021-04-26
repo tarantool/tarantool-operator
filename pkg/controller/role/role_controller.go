@@ -84,7 +84,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			rec := r.(*ReconcileRole)
 			roleList := &tarantoolv1alpha1.RoleList{}
 			if err := rec.client.List(context.TODO(), &client.ListOptions{}, roleList); err != nil {
-				log.Info("FUCK")
+				log.Info("Unexpected error")
 			}
 
 			res := []reconcile.Request{}
@@ -316,6 +316,36 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 
 	sts.Spec.Template.Labels["tarantool.io/replicaset-uuid"] = replicasetUUID.String()
 	sts.Spec.Template.Labels["tarantool.io/vshardGroupName"] = role.GetLabels()["tarantool.io/role"]
+
+	if sts.Spec.Template.Spec.Affinity == nil {
+		sts.Spec.Template.Spec.Affinity = &corev1.Affinity{}
+	}
+
+	affinity := sts.Spec.Template.Spec.Affinity
+
+	if affinity.PodAntiAffinity == nil {
+		affinity.PodAntiAffinity = &corev1.PodAntiAffinity{}
+	}
+
+	affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(
+		affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+		// The rule prescribes, if possible, to place pods of the same tarantool replicaset on different Kubernetes nodes
+		corev1.WeightedPodAffinityTerm{
+			Weight: 100,
+			PodAffinityTerm: corev1.PodAffinityTerm{
+				LabelSelector: &metav1.LabelSelector{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
+						{
+							Key:      "tarantool.io/replicaset-uuid",
+							Operator: metav1.LabelSelectorOpIn,
+							Values:   []string{replicasetUUID.String()},
+						},
+					},
+				},
+				TopologyKey: "kubernetes.io/hostname",
+			},
+		},
+	)
 
 	return sts
 }
