@@ -71,6 +71,7 @@ spec:
       updateStrategy:
         type: OnDelete
       securityContext:
+        runAsUser: 1000
         fsGroup: 1000
         capabilities:
           add: ["SYS_ADMIN"]
