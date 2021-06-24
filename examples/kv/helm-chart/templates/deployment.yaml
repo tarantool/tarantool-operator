@@ -74,6 +74,31 @@ spec:
         fsGroup: 1000
         capabilities:
           add: ["SYS_ADMIN"]
+      affinity:
+        {{- if .Affinity }}
+        {{- if .Affinity.DesiredMasterZone }}
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 30
+              preference:
+                matchExpressions:
+                - key: statefulset.kubernetes.io/pod-name
+                  operator: In
+                  values:
+                  - "{{ .Affinity.DesiredMasterZone }}"
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 70
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: statefulset.kubernetes.io/pod-name
+                    operator: NotIn
+                    values:
+                    - {{ .RoleName }}
+                topologyKey: kubernetes.io/hostname
+        {{- end }}
+        {{- end }}
       containers:
         - name: pim-storage
           image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
