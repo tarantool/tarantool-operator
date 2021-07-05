@@ -227,6 +227,15 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			}
 		}
 
+		if !ContainerResourcesIsEqual(sts.Spec.Template.Spec.Containers[0].Resources,
+			template.Spec.Template.Spec.Containers[0].Resources) {
+
+			sts.Spec.Template.Spec.Containers[0].Resources = template.Spec.Template.Spec.Containers[0].Resources
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
 		if template.Spec.Template.Spec.Containers[0].Image != sts.Spec.Template.Spec.Containers[0].Image {
 			reqLogger.Info("Updating container image")
 			sts.Spec.Template.Spec.Containers[0].Image = template.Spec.Template.Spec.Containers[0].Image
@@ -274,6 +283,29 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func ContainerResourcesIsEqual(sts corev1.ResourceRequirements, template corev1.ResourceRequirements) bool {
+	resources := []corev1.ResourceName{
+		corev1.ResourceCPU,
+		corev1.ResourceMemory,
+		corev1.ResourceStorage,
+		corev1.ResourceEphemeralStorage,
+	}
+
+	for _, resource := range resources {
+		limit := template.Limits[resource]
+		if limit.Cmp(sts.Limits[resource]) != 0 {
+			return false
+		}
+
+		request := template.Requests[resource]
+		if request.Cmp(sts.Requests[resource]) != 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // CreateStatefulSetFromTemplate .
