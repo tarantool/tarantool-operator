@@ -3,6 +3,7 @@ package role
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 	tarantoolv1alpha1 "github.com/tarantool/tarantool-operator/pkg/apis/tarantool/v1alpha1"
@@ -227,27 +228,12 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			}
 		}
 
-		if !ContainerResourcesIsEqual(sts.Spec.Template.Spec.Containers[0].Resources,
-			template.Spec.Template.Spec.Containers[0].Resources) {
-
-			sts.Spec.Template.Spec.Containers[0].Resources = template.Spec.Template.Spec.Containers[0].Resources
+		if !reflect.DeepEqual(template.Spec.Template.Spec.Containers[0], sts.Spec.Template.Spec.Containers[0]) {
+			reqLogger.Info("Updating container template")
+			sts.Spec.Template.Spec.Containers[0] = template.Spec.Template.Spec.Containers[0]
 			if err := r.client.Update(context.TODO(), &sts); err != nil {
 				return reconcile.Result{}, err
 			}
-		}
-
-		if template.Spec.Template.Spec.Containers[0].Image != sts.Spec.Template.Spec.Containers[0].Image {
-			reqLogger.Info("Updating container image")
-			sts.Spec.Template.Spec.Containers[0].Image = template.Spec.Template.Spec.Containers[0].Image
-			if err := r.client.Update(context.TODO(), &sts); err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-
-		sts.Spec.Template.Spec.Containers[0].Env = template.Spec.Template.Spec.Containers[0].Env
-		reqLogger.Info("Env variables", "vars", sts.Spec.Template.Spec.Containers[0].Env)
-		if err := r.client.Update(context.TODO(), &sts); err != nil {
-			return reconcile.Result{}, err
 		}
 
 		if templateRolesToAssign, ok := template.ObjectMeta.Annotations["tarantool.io/rolesToAssign"]; ok {
@@ -285,29 +271,6 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 	return reconcile.Result{}, nil
 }
 
-func ContainerResourcesIsEqual(sts corev1.ResourceRequirements, template corev1.ResourceRequirements) bool {
-	resources := []corev1.ResourceName{
-		corev1.ResourceCPU,
-		corev1.ResourceMemory,
-		corev1.ResourceStorage,
-		corev1.ResourceEphemeralStorage,
-	}
-
-	for _, resource := range resources {
-		limit := template.Limits[resource]
-		if limit.Cmp(sts.Limits[resource]) != 0 {
-			return false
-		}
-
-		request := template.Requests[resource]
-		if request.Cmp(sts.Requests[resource]) != 0 {
-			return false
-		}
-	}
-
-	return true
-}
-
 // CreateStatefulSetFromTemplate .
 func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tarantoolv1alpha1.Role, rs *tarantoolv1alpha1.ReplicasetTemplate) *appsv1.StatefulSet {
 	reqLogger := log.WithValues("func", "CreateStatefulSetFromTemplate")
@@ -326,12 +289,6 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 
 	for k, v := range role.GetLabels() {
 		sts.Spec.Template.Labels[k] = v
-	}
-
-	privileged := false
-
-	sts.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
-		Privileged: &privileged,
 	}
 
 	sts.Spec.ServiceName = role.GetAnnotations()["tarantool.io/cluster-id"]
