@@ -3,7 +3,7 @@ package role
 import (
 	"context"
 	"fmt"
-	"reflect"
+	// "reflect"
 
 	"github.com/google/uuid"
 	tarantoolv1alpha1 "github.com/tarantool/tarantool-operator/pkg/apis/tarantool/v1alpha1"
@@ -227,12 +227,18 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			}
 		}
 
-		if !reflect.DeepEqual(template.Spec.Template.Spec.Containers[0], sts.Spec.Template.Spec.Containers[0]) {
-			reqLogger.Info("Updating container template")
-			sts.Spec.Template.Spec.Containers[0] = template.Spec.Template.Spec.Containers[0]
+		if template.Spec.Template.Spec.Containers[0].Image != sts.Spec.Template.Spec.Containers[0].Image {
+			reqLogger.Info("Updating container image")
+			sts.Spec.Template.Spec.Containers[0].Image = template.Spec.Template.Spec.Containers[0].Image
 			if err := r.client.Update(context.TODO(), &sts); err != nil {
 				return reconcile.Result{}, err
 			}
+		}
+
+		sts.Spec.Template.Spec.Containers[0].Env = template.Spec.Template.Spec.Containers[0].Env
+		reqLogger.Info("Env variables", "vars", sts.Spec.Template.Spec.Containers[0].Env)
+		if err := r.client.Update(context.TODO(), &sts); err != nil {
+			return reconcile.Result{}, err
 		}
 
 		if templateRolesToAssign, ok := template.ObjectMeta.Annotations["tarantool.io/rolesToAssign"]; ok {
