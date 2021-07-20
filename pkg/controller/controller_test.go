@@ -53,6 +53,26 @@ var _ = Describe("controllers integration testing", func() {
             alias = fmt.Sprintf("%s-%d-%d", roleName, 0, 0)
             serviceName = "test-service"
 
+            By("delete cluster")
+            deleteCluster := &tarantoolv1alpha1.Cluster{}
+            _ = k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, deleteCluster)
+            _ = k8sClient.Delete(ctx, deleteCluster)
+
+            By("delete Service")
+            deleteService := &corev1.Service{}
+            _ = k8sClient.Get(ctx, client.ObjectKey{Name: serviceName, Namespace: namespace}, deleteService)
+            _ = k8sClient.Delete(ctx, deleteService)
+
+            By("delete role")
+            deleteRole := &tarantoolv1alpha1.Role{}
+            _ = k8sClient.Get(ctx, client.ObjectKey{Name: roleName, Namespace: namespace}, deleteRole)
+            _ = k8sClient.Delete(ctx, deleteRole)
+
+            By("delete replicasetTemplate")
+            deleteRsTemplate := &tarantoolv1alpha1.ReplicasetTemplate{}
+            _ = k8sClient.Get(ctx, client.ObjectKey{Name: rsTemplateName, Namespace: namespace}, deleteRsTemplate)
+            _ = k8sClient.Delete(ctx, deleteRsTemplate)
+
             By("create new Cluster " + clusterName)
             cluster := helpers.NewCluster(helpers.ClusterParams{
                 Name:      clusterName,
