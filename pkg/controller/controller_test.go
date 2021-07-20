@@ -152,7 +152,7 @@ var _ = Describe("controllers integration testing", func() {
                     }
                     return true
                 },
-                time.Second*40, time.Millisecond*500,
+                time.Second*120, time.Millisecond*1000,
             ).Should(BeTrue())
 
             stopPortForwardChan = make(chan struct{}, 1)
