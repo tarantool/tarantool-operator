@@ -16,6 +16,7 @@ import (
 
 	tarantoolv1alpha1 "github.com/tarantool/tarantool-operator/pkg/apis/tarantool/v1alpha1"
 
+	// "k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -290,5 +291,56 @@ var _ = Describe("role_controller unit testing", func() {
 				).Should(BeTrue())
 			})
 		})
+
+		// Context("update container template", func() {
+		// 	It("update container resources", func() {
+		// 		rsTemplate := &tarantoolv1alpha1.ReplicasetTemplate{}
+		// 		Expect(
+		// 			k8sClient.Get(ctx, client.ObjectKey{Name: rsTemplateName, Namespace: namespace}, rsTemplate),
+		// 		).NotTo(HaveOccurred(), "failed to get ReplicasetTemplate")
+
+		// 		newCpu := resource.NewMilliQuantity(2001, resource.DecimalSI)
+		// 		newMem := resource.NewQuantity(2002, resource.BinarySI)
+		// 		newDisk := resource.NewQuantity(2003, resource.DecimalSI)
+		// 		newEphDisk := resource.NewQuantity(2004, resource.DecimalSI)
+
+		// 		rsTemplate.Spec.Template.Spec.Containers[0].Resources.Limits = map[corev1.ResourceName]resource.Quantity{
+		// 			corev1.ResourceCPU:    *newCpu,
+		// 			corev1.ResourceMemory: *newMem,
+		// 		}
+
+		// 		rsTemplate.Spec.Template.Spec.Containers[0].Resources.Requests = map[corev1.ResourceName]resource.Quantity{
+		// 			corev1.ResourceStorage:          *newDisk,
+		// 			corev1.ResourceEphemeralStorage: *newEphDisk,
+		// 		}
+
+		// 		Expect(
+		// 			k8sClient.Update(ctx, rsTemplate),
+		// 		).NotTo(HaveOccurred(), "failed to update ReplicasetTemplate")
+
+		// 		sts := &appsv1.StatefulSet{}
+		// 		Eventually(
+		// 			func() bool {
+		// 				err := k8sClient.Get(ctx, client.ObjectKey{Name: stsName, Namespace: namespace}, sts)
+		// 				if err != nil {
+		// 					return false
+		// 				}
+
+		// 				stsResources := sts.Spec.Template.Spec.Containers[0].Resources
+
+		// 				if newCpu.Cmp(stsResources.Limits[corev1.ResourceCPU]) == 0 &&
+		// 					newMem.Cmp(stsResources.Limits[corev1.ResourceMemory]) == 0 &&
+		// 					newDisk.Cmp(stsResources.Requests[corev1.ResourceStorage]) == 0 &&
+		// 					newEphDisk.Cmp(stsResources.Requests[corev1.ResourceEphemeralStorage]) == 0 {
+
+		// 					return true
+		// 				}
+
+		// 				return false
+		// 			},
+		// 			time.Second*10, time.Millisecond*500,
+		// 		).Should(BeTrue())
+		// 	})
+		// })
 	})
 })
