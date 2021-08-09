@@ -3,11 +3,11 @@ package role
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 	tarantoolv1alpha1 "github.com/tarantool/tarantool-operator/pkg/apis/tarantool/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,7 +84,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			rec := r.(*ReconcileRole)
 			roleList := &tarantoolv1alpha1.RoleList{}
 			if err := rec.client.List(context.TODO(), &client.ListOptions{}, roleList); err != nil {
-				log.Info("FUCK")
+				log.Info("Unexpected error", "message", err.Error())
 			}
 
 			res := []reconcile.Request{}
@@ -182,10 +182,6 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			if stsAnnotations["tarantool.io/scheduledDelete"] == "1" {
 				reqLogger.Info("statefulset is ready for deletion")
 			}
-
-			// if err := r.client.Delete(context.TODO(), sts); err != nil {
-			// 	return reconcile.Result{}, err
-			// }
 		}
 	}
 
@@ -227,48 +223,59 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 			}
 		}
 
-		if template.Spec.Template.Spec.Containers[0].Image != sts.Spec.Template.Spec.Containers[0].Image {
-			reqLogger.Info("Updating container image")
-			sts.Spec.Template.Spec.Containers[0].Image = template.Spec.Template.Spec.Containers[0].Image
+		if !reflect.DeepEqual(template.Spec.Template.Spec, sts.Spec.Template.Spec) {
+			reqLogger.Info("Updating template spec")
+			sts.Spec.Template.Spec = template.Spec.Template.Spec
 			if err := r.client.Update(context.TODO(), &sts); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
 
-		sts.Spec.Template.Spec.Containers[0].Env = template.Spec.Template.Spec.Containers[0].Env
-		reqLogger.Info("Env variables", "vars", sts.Spec.Template.Spec.Containers[0].Env)
-		if err := r.client.Update(context.TODO(), &sts); err != nil {
-			return reconcile.Result{}, err
+		if template.Spec.UpdateStrategy.Type != sts.Spec.UpdateStrategy.Type {
+			reqLogger.Info("Updating sts UpdateStrategy", "new type", template.Spec.UpdateStrategy)
+			sts.Spec.UpdateStrategy = template.Spec.UpdateStrategy
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 
-		if templateRolesToAssign, ok := template.ObjectMeta.Annotations["tarantool.io/rolesToAssign"]; ok {
-			// check rolesToAssign from annotations
-			if templateRolesToAssign != sts.ObjectMeta.Annotations["tarantool.io/rolesToAssign"] {
-				reqLogger.Info("Updating replicaset rolesToAssign",
-					"from", sts.ObjectMeta.Annotations["tarantool.io/rolesToAssign"],
-					"to", templateRolesToAssign)
+		// immutable sts labels
+		for _, key := range []string{
+			"tarantool.io/replicaset-uuid",
+			"tarantool.io/vshardGroupName",
+		} {
+			template.ObjectMeta.Labels[key] = sts.ObjectMeta.Labels[key]
+		}
 
-				sts.ObjectMeta.Annotations["tarantool.io/rolesToAssign"] = templateRolesToAssign
-				sts.Spec.Template.Annotations["tarantool.io/rolesToAssign"] = templateRolesToAssign
+		// immutable sts annotations
+		for _, key := range []string{
+			"tarantool.io/isBootstrapped",
+			"tarantool.io/replicaset-weight",
+		} {
+			template.ObjectMeta.Annotations[key] = sts.ObjectMeta.Annotations[key]
+		}
 
-				if err := r.client.Update(context.TODO(), &sts); err != nil {
-					return reconcile.Result{}, err
-				}
+		// immutable container template labels
+		for _, key := range []string{
+			"tarantool.io/replicaset-uuid",
+			"tarantool.io/vshardGroupName",
+		} {
+			template.Spec.Template.ObjectMeta.Labels[key] = sts.Spec.Template.ObjectMeta.Labels[key]
+		}
+
+		if !reflect.DeepEqual(template.ObjectMeta.Labels, sts.ObjectMeta.Labels) {
+			reqLogger.Info("Updating sts Labels")
+			sts.ObjectMeta.Labels = template.ObjectMeta.Labels
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
 			}
-		} else {
-			// check rolesToAssign from labels (deprecated)
-			templateRolesToAssignFromLabels, ok := template.ObjectMeta.Labels["tarantool.io/rolesToAssign"]
-			if ok && templateRolesToAssignFromLabels != sts.ObjectMeta.Labels["tarantool.io/rolesToAssign"] {
-				reqLogger.Info("Updating replicaset rolesToAssign from labels",
-					"from", sts.ObjectMeta.Labels["tarantool.io/rolesToAssign"],
-					"to", templateRolesToAssignFromLabels)
+		}
 
-				sts.ObjectMeta.Labels["tarantool.io/rolesToAssign"] = templateRolesToAssignFromLabels
-				sts.Spec.Template.Labels["tarantool.io/rolesToAssign"] = templateRolesToAssignFromLabels
-
-				if err := r.client.Update(context.TODO(), &sts); err != nil {
-					return reconcile.Result{}, err
-				}
+		if !reflect.DeepEqual(template.ObjectMeta.Annotations, sts.ObjectMeta.Annotations) {
+			reqLogger.Info("Updating sts Annotations")
+			sts.ObjectMeta.Annotations = template.ObjectMeta.Annotations
+			if err := r.client.Update(context.TODO(), &sts); err != nil {
+				return reconcile.Result{}, err
 			}
 		}
 	}
@@ -278,8 +285,6 @@ func (r *ReconcileRole) Reconcile(request reconcile.Request) (reconcile.Result, 
 
 // CreateStatefulSetFromTemplate .
 func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tarantoolv1alpha1.Role, rs *tarantoolv1alpha1.ReplicasetTemplate) *appsv1.StatefulSet {
-	reqLogger := log.WithValues("func", "CreateStatefulSetFromTemplate")
-
 	sts := &appsv1.StatefulSet{
 		Spec: *rs.Spec,
 	}
@@ -290,16 +295,8 @@ func CreateStatefulSetFromTemplate(replicasetNumber int, name string, role *tara
 
 	sts.Spec.UpdateStrategy = appsv1.StatefulSetUpdateStrategy{Type: "OnDelete"}
 
-	reqLogger.Info("Update Strategy: %s", sts.Spec.UpdateStrategy.Type)
-
 	for k, v := range role.GetLabels() {
 		sts.Spec.Template.Labels[k] = v
-	}
-
-	privileged := false
-
-	sts.Spec.Template.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{
-		Privileged: &privileged,
 	}
 
 	sts.Spec.ServiceName = role.GetAnnotations()["tarantool.io/cluster-id"]
