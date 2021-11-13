@@ -3,6 +3,7 @@
 ClusterEnv: dev
 ClusterName: examples-kv-cluster
 ClusterDomainName: cluster.local
+ClusterCookie: "tnt-kv-cookie"
 TarantoolWorkDir: /var/lib/tarantool
 LuaMemoryReserveMB: 2048
 
