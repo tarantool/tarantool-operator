@@ -124,6 +124,10 @@ spec:
               value: "60"
             - name: TARANTOOL_HTTP_PORT
               value: "8081"
+            {{- if $.Values.ClusterCookie }}
+            - name: TARANTOOL_CLUSTER_COOKIE
+              value: "{{ $.Values.ClusterCookie }}"
+            {{- end }}
           readinessProbe:
             tcpSocket:
               port: http
