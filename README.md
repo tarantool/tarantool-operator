@@ -64,36 +64,26 @@ The documentation is on the Tarantool official [website](https://www.tarantool.i
 
     To install and configure a local minikube installation:
 
-    1. Create a `minikube` cluster:
+    Create a `minikube` cluster:
 
-        ```shell
-        $ minikube start --memory=4096
-        ```
+    ```shell
+    $ minikube start --memory=4096
+    ```
 
-        You will need 4Gb of RAM allocated to the `minikube` cluster to run examples.
+    You will need 4Gb of RAM allocated to the `minikube` cluster to run examples.
 
-        Ensure `minikube` is up and running:
+    Ensure `minikube` is up and running:
 
-        ```shell
-        $ minikube status
-        ---
-        minikube
-        type: Control Plane
-        host: Running
-        kubelet: Running
-        apiserver: Running
-        kubeconfig: Configured
-        ```
-
-    2. Enable minikube Ingress add-on:
-
-        ```shell
-        $ minikube addons enable ingress
-        ---
-        ...
-        🔎  Verifying ingress addon...
-        🌟  The 'ingress' addon is enabled
-        ```
+    ```shell
+    $ minikube status
+    ---
+    minikube
+    type: Control Plane
+    host: Running
+    kubelet: Running
+    apiserver: Running
+    kubeconfig: Configured
+    ```
 
 2. Build the operator image
 
