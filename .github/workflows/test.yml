@@ -10,9 +10,7 @@ jobs:
 
       - name: lint
         uses: golangci/golangci-lint-action@v2
-        with:
-          args: --timeout 2m
-          working-directory: controllers/
+        
 
   testing:
     name: testing
