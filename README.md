@@ -116,8 +116,6 @@ The documentation is on the Tarantool official [website](https://www.tarantool.i
 
 4. Install the operator
 
-
-
     ```shell
     $ helm install -n tarantool-operator operator helm-charts/tarantool-operator \
                  --create-namespace \
@@ -191,6 +189,7 @@ Tarantool Operator is up and running.
     NAME          READY   STATUS    RESTARTS   AGE
     routers-0-0   1/1     Running   0          6m12s
     storage-0-0   1/1     Running   0          6m12s
+    storage-0-1   1/1     Running   0          6m12s
     ```
 
 2. Ensure cluster became operational:
@@ -244,7 +243,7 @@ In the cartridge helm chart, edit the `helm-charts/tarantool-cartridge/values.ya
 
 ```yaml
 - RoleName: storage
-  ReplicaCount: 1
+  ReplicaCount: 2
   ReplicaSetCount: 2
 ```
 
