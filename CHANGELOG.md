@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.0.8] - 2021-03-30
+### Added
+- Makefile with a full set of targets for all occasions
+
+### Changed
+- Bump operator-sdk version (and other dependencies)
+- Refactor project structure, all helm charts are collected in one place
+
+### Breaking changes
+- Now the Tarantool Operator is installed in a special separate namespace
+
+## [0.0.9] - 2021-03-30
 
 ### Added
 - Integration test for cluster_controller written with envtest and ginkgo
