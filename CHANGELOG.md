@@ -11,11 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Makefile with a full set of targets for all occasions
 
 ### Changed
+- The Tarantool Operator is installed in a separate namespace
 - Bump operator-sdk version (and other dependencies)
 - Refactor project structure, all helm charts are collected in one place
-
-### Breaking changes
-- Now the Tarantool Operator is installed in a special separate namespace
+- Update crds api version from `apiextensions.k8s.io/v1beta1` to `apiextensions.k8s.io/v1`
 
 ## [0.0.9] - 2021-03-30
 
