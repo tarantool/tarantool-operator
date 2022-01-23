@@ -101,6 +101,23 @@ func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
 	return o
 }
 
+func SelectJoinPod(r *ClusterReconciler, stsList []appsv1.StatefulSet) *corev1.Pod {
+	for _, sts := range stsList {
+		for i := 0; i < int(*sts.Spec.Replicas); i++ {
+			pod := &corev1.Pod{}
+			namespacedName := types.NamespacedName{
+				Namespace: sts.GetNamespace(),
+				Name:      fmt.Sprintf("%s-%d", sts.GetName(), i),
+			}
+			err := r.Get(context.TODO(), namespacedName, pod)
+			if err == nil {
+				return pod
+			}
+		}
+	}
+	return nil
+}
+
 //+kubebuilder:rbac:groups=tarantool.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=tarantool.io,resources=clusters/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=tarantool.io,resources=clusters/finalizers,verbs=update
@@ -198,27 +215,27 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// ensure Cluster leader elected
-	ep := &corev1.Endpoints{}
-	if err := r.Get(context.TODO(), types.NamespacedName{Namespace: cluster.GetNamespace(), Name: cluster.GetName()}, ep); err != nil {
-		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-	}
-	if len(ep.Subsets) == 0 || len(ep.Subsets[0].Addresses) == 0 {
-		reqLogger.Info("No available Endpoint resource configured for Cluster, waiting")
-		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
-	}
+	// ep := &corev1.Endpoints{}
+	// if err := r.Get(context.TODO(), types.NamespacedName{Namespace: cluster.GetNamespace(), Name: cluster.GetName()}, ep); err != nil {
+	// 	return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+	// }
+	// if len(ep.Subsets) == 0 || len(ep.Subsets[0].Addresses) == 0 {
+	// 	reqLogger.Info("No available Endpoint resource configured for Cluster, waiting")
+	// 	return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+	// }
 
-	if !IsLeaderExists(ep) {
-		leader := fmt.Sprintf("%s:%s", ep.Subsets[0].Addresses[0].IP, "8081")
+	// if !IsLeaderExists(ep) {
+	// 	leader := fmt.Sprintf("%s:%s", ep.Subsets[0].Addresses[0].IP, "8081")
 
-		if ep.Annotations == nil {
-			ep.Annotations = make(map[string]string)
-		}
+	// 	if ep.Annotations == nil {
+	// 		ep.Annotations = make(map[string]string)
+	// 	}
 
-		ep.Annotations["tarantool.io/leader"] = leader
-		if err := r.Update(context.TODO(), ep); err != nil {
-			return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-		}
-	}
+	// 	ep.Annotations["tarantool.io/leader"] = leader
+	// 	if err := r.Update(context.TODO(), ep); err != nil {
+	// 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
+	// 	}
+	// }
 
 	stsList := &appsv1.StatefulSetList{}
 	if err := r.List(context.TODO(), stsList, &client.ListOptions{LabelSelector: clusterSelector}); err != nil {
@@ -229,8 +246,26 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 	}
 
+	// Choose one instance for manage cluster
+	joinPod := SelectJoinPod(r, stsList.Items)
+	if joinPod == nil {
+		reqLogger.Info("No running pods in StatefulSets.")
+		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+	}
+
+	clusterDomainName, ok := cluster.GetLabels()["tarantool.io/cluster-domain-name"]
+	if !ok {
+		clusterDomainName = "cluster.local"
+	}
+
+	joinHost := fmt.Sprintf("%s.%s.%s.svc.%s:8081",
+		joinPod.GetObjectMeta().GetName(),      // Instance name
+		cluster.GetName(),                      // Cartridge cluster name
+		joinPod.GetObjectMeta().GetNamespace(), // Namespace
+		clusterDomainName)                      // Cluster domain name
+
 	topologyClient := topology.NewBuiltInTopologyService(
-		topology.WithTopologyEndpoint(fmt.Sprintf("http://%s/admin/api", ep.Annotations["tarantool.io/leader"])),
+		topology.WithTopologyEndpoint(fmt.Sprintf("http://%s/admin/api", joinHost)),
 		topology.WithClusterID(cluster.GetName()),
 	)
 
@@ -441,24 +476,24 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&tarantooliov1alpha1.Cluster{}).
-		Watches(&source.Kind{Type: &tarantooliov1alpha1.Cluster{}}, &handler.EnqueueRequestForObject{}).
-		Watches(&source.Kind{Type: &corev1.Pod{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
-			if a.GetLabels() == nil {
-				return []ctrl.Request{}
-			}
-			return []ctrl.Request{
-				{NamespacedName: types.NamespacedName{
+		Watches(&source.Kind{Type: &appsv1.StatefulSet{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+			if clusterName, ok := a.GetLabels()["tarantool.io/cluster-id"]; ok {
+				nsName := types.NamespacedName{
 					Namespace: a.GetNamespace(),
-					Name:      a.GetLabels()["tarantool.io/cluster-id"],
-				}},
+					Name:      clusterName,
+				}
+				return []ctrl.Request{
+					{NamespacedName: nsName},
+				}
 			}
+			return []ctrl.Request{}
 		})).
 		Complete(r)
 }

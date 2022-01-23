@@ -126,10 +126,6 @@ func (r *RoleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			if stsAnnotations["tarantool.io/scheduledDelete"] == "1" {
 				reqLogger.Info("statefulset is ready for deletion")
 			}
-
-			// if err := r.client.Delete(context.TODO(), sts); err != nil {
-			// 	return reconcile.Result{}, err
-			// }
 		}
 	}
 
@@ -163,7 +159,7 @@ func (r *RoleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	for _, sts := range stsList.Items {
-		if template.Spec.Replicas != sts.Spec.Replicas {
+		if *template.Spec.Replicas != *sts.Spec.Replicas {
 			reqLogger.Info("Updating replicas count")
 			sts.Spec.Replicas = template.Spec.Replicas
 			if err := r.Update(context.TODO(), &sts); err != nil {
@@ -224,7 +220,6 @@ func (r *RoleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *RoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&tarantooliov1alpha1.Role{}).
-		Watches(&source.Kind{Type: &tarantooliov1alpha1.Role{}}, &handler.EnqueueRequestForObject{}).
 		Watches(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &tarantooliov1alpha1.Role{},
@@ -232,7 +227,7 @@ func (r *RoleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&source.Kind{Type: &tarantooliov1alpha1.ReplicasetTemplate{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
 			roleList := &tarantooliov1alpha1.RoleList{}
 			if err := r.Client.List(context.TODO(), roleList, &client.ListOptions{}); err != nil {
-				mgr.GetLogger().Info("FUCK")
+				mgr.GetLogger().Info("Error getting list of ReplicasetTemplate in mgr.Watches")
 			}
 
 			res := []reconcile.Request{}
