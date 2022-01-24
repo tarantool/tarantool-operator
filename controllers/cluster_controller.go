@@ -101,21 +101,38 @@ func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
 	return o
 }
 
+// select pod for calling manage operations
 func SelectJoinPod(r *ClusterReconciler, stsList []appsv1.StatefulSet) *corev1.Pod {
+	unjoinedPod := new(corev1.Pod)
+
 	for _, sts := range stsList {
 		for i := 0; i < int(*sts.Spec.Replicas); i++ {
 			pod := &corev1.Pod{}
+
 			namespacedName := types.NamespacedName{
 				Namespace: sts.GetNamespace(),
 				Name:      fmt.Sprintf("%s-%d", sts.GetName(), i),
 			}
+
 			err := r.Get(context.TODO(), namespacedName, pod)
-			if err == nil {
+			if err != nil {
+
+				continue
+			}
+
+			// return first already joined pod
+			if tarantool.IsJoined(pod) {
 				return pod
+			}
+
+			// save one of the unjoined pods
+			if !tarantool.IsExpelling(pod) {
+				unjoinedPod = pod
 			}
 		}
 	}
-	return nil
+
+	return unjoinedPod
 }
 
 //+kubebuilder:rbac:groups=tarantool.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
