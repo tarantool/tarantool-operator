@@ -151,20 +151,20 @@ var _ = Describe("cluster_controller unit testing", func() {
 			AfterEach(func() {
 				rsTemplate := &tarantooliov1alpha1.ReplicasetTemplate{}
 				Expect(
-					k8sClient.Get(ctx, client.ObjectKey{Name: rsTemplateName, Namespace: namespace}, rsTemplate)
+					k8sClient.Get(ctx, client.ObjectKey{Name: rsTemplateName, Namespace: namespace}, rsTemplate),
 				).NotTo(HaveOccurred(), "failed to get ReplicasetTemplate")
 
 				Expect(
-					k8sClient.Delete(ctx, rsTemplate)
+					k8sClient.Delete(ctx, rsTemplate),
 				).NotTo(HaveOccurred(), "failed to delete ReplicasetTemplate")
 
 				pod := &corev1.Pod{}
 				Expect(
-					k8sClient.Get(ctx, client.ObjectKey{Name: podName, Namespace: namespace}, pod)
+					k8sClient.Get(ctx, client.ObjectKey{Name: podName, Namespace: namespace}, pod),
 				).NotTo(HaveOccurred(), "failed to get Pod")
 
 				Expect(
-					k8sClient.Delete(ctx, pod)
+					k8sClient.Delete(ctx, pod),
 				).NotTo(HaveOccurred(), "failed to delete Pod")
 			})
 
