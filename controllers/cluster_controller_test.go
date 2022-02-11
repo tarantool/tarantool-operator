@@ -36,6 +36,9 @@ type MockClient struct {
 }
 
 func (c MockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+	if obj == nil {
+		return fmt.Errorf("required target object")
+	}
 	for _, o := range c.Items {
 		if key.Name == o.GetName() && key.Namespace == o.GetNamespace() {
 			obj = o
@@ -179,11 +182,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 						}
 
 						leader := cluster.GetAnnotations()["tarantool.io/topology-manage-leader"]
-						if leader == expectedLeader {
-							return true
-						}
-
-						return false
+						return leader == expectedLeader
 					},
 					time.Second*10, time.Millisecond*500,
 				).Should(BeTrue())
