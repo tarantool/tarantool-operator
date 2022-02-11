@@ -187,14 +187,9 @@ func NewReplicasetTemplate(params ReplicasetTemplateParams) tarantooliov1alpha1.
 					// },
 					Containers: []corev1.Container{
 						{
-							Name:  params.ContainerName,
-							Image: params.ContainerImage,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "www",
-									MountPath: "/var/lib/tarantool",
-								},
-							},
+							Name:         params.ContainerName,
+							Image:        params.ContainerImage,
+							VolumeMounts: []corev1.VolumeMount{},
 							// SecurityContext: &corev1.SecurityContext{
 							// 	Capabilities: &corev1.Capabilities{
 							// 		Add: []corev1.Capability{

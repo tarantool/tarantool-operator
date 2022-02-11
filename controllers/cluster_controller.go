@@ -63,21 +63,6 @@ type ClusterReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// Checking for a leader in the cluster Endpoint annotation
-func IsLeaderExists(ep *corev1.Endpoints) bool {
-	leader, ok := ep.Annotations["tarantool.io/leader"]
-	if !ok || leader == "" {
-		return false
-	}
-
-	for _, addr := range ep.Subsets[0].Addresses {
-		if leader == fmt.Sprintf("%s:%s", addr.IP, "8081") {
-			return true
-		}
-	}
-	return false
-}
-
 // HasInstanceUUID .
 func HasInstanceUUID(o *corev1.Pod) bool {
 	annotations := o.Labels
@@ -101,38 +86,68 @@ func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
 	return o
 }
 
-// select pod for calling manage operations
-func SelectJoinPod(r *ClusterReconciler, stsList []appsv1.StatefulSet) *corev1.Pod {
-	unjoinedPod := new(corev1.Pod)
+// SelectTopologyManageLeader selects the first pod from
+// the first non-empty StatefulSet
+// return leader, nil if leader selected
+// return "", err if possible leader not available
+// return "", error("not found") if there are no pods in the cluster
+func SelectTopologyManageLeader(c client.Reader, stsList *appsv1.StatefulSetList) (string, error) {
+	for _, sts := range stsList.Items {
+		if int(*sts.Spec.Replicas) == 0 {
+			continue
+		}
 
-	for _, sts := range stsList {
-		for i := 0; i < int(*sts.Spec.Replicas); i++ {
-			pod := &corev1.Pod{}
+		namespace := sts.GetNamespace()
+		podName := fmt.Sprintf("%s-0", sts.GetName())
+		svcName := sts.Spec.ServiceName
 
-			namespacedName := types.NamespacedName{
-				Namespace: sts.GetNamespace(),
-				Name:      fmt.Sprintf("%s-%d", sts.GetName(), i),
-			}
+		pod := &corev1.Pod{}
+		podNamespacedName := types.NamespacedName{Namespace: namespace, Name: podName}
 
-			err := r.Get(context.TODO(), namespacedName, pod)
-			if err != nil {
+		err := c.Get(context.TODO(), podNamespacedName, pod)
+		if err != nil {
+			return "", err
+		}
 
-				continue
-			}
+		domainName := pod.Labels["tarantool.io/cluster-domain-name"]
 
-			// return first already joined pod
-			if tarantool.IsJoined(pod) {
-				return pod
-			}
+		return utils.MakeStaticPodAddr(podName, svcName, namespace, domainName, 8081), nil
+	}
 
-			// save one of the unjoined pods
-			if !tarantool.IsExpelling(pod) {
-				unjoinedPod = pod
-			}
+	return "", fmt.Errorf("not found")
+}
+
+// IsTopologyManageLeaderExists checks that the passed leader
+// is exists and is available in the cluster
+// return true, nil if leader exists and available
+// return false, nil if leader does not exist
+// return false, err if leader is not available
+func IsTopologyManageLeaderExists(c client.Reader, stsList *appsv1.StatefulSetList, leader string) (bool, error) {
+	for _, sts := range stsList.Items {
+		if int(*sts.Spec.Replicas) == 0 {
+			continue
+		}
+
+		namespace := sts.GetNamespace()
+		podName := fmt.Sprintf("%s-0", sts.GetName())
+		svcName := sts.Spec.ServiceName
+
+		pod := &corev1.Pod{}
+		podNamespacedName := types.NamespacedName{Namespace: namespace, Name: podName}
+		err := c.Get(context.TODO(), podNamespacedName, pod)
+		if err != nil {
+			return false, err
+		}
+
+		domainName := pod.Labels["tarantool.io/cluster-domain-name"]
+
+		podAddr := utils.MakeStaticPodAddr(podName, svcName, namespace, domainName, 8081)
+		if podAddr == leader {
+			return true, nil
 		}
 	}
 
-	return unjoinedPod
+	return false, nil
 }
 
 //+kubebuilder:rbac:groups=tarantool.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -231,29 +246,6 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	// ensure Cluster leader elected
-	// ep := &corev1.Endpoints{}
-	// if err := r.Get(context.TODO(), types.NamespacedName{Namespace: cluster.GetNamespace(), Name: cluster.GetName()}, ep); err != nil {
-	// 	return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-	// }
-	// if len(ep.Subsets) == 0 || len(ep.Subsets[0].Addresses) == 0 {
-	// 	reqLogger.Info("No available Endpoint resource configured for Cluster, waiting")
-	// 	return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
-	// }
-
-	// if !IsLeaderExists(ep) {
-	// 	leader := fmt.Sprintf("%s:%s", ep.Subsets[0].Addresses[0].IP, "8081")
-
-	// 	if ep.Annotations == nil {
-	// 		ep.Annotations = make(map[string]string)
-	// 	}
-
-	// 	ep.Annotations["tarantool.io/leader"] = leader
-	// 	if err := r.Update(context.TODO(), ep); err != nil {
-	// 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
-	// 	}
-	// }
-
 	stsList := &appsv1.StatefulSetList{}
 	if err := r.List(context.TODO(), stsList, &client.ListOptions{LabelSelector: clusterSelector}); err != nil {
 		if errors.IsNotFound(err) {
@@ -263,26 +255,40 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 	}
 
-	// Choose one instance for manage cluster
-	joinPod := SelectJoinPod(r, stsList.Items)
-	if joinPod == nil {
-		reqLogger.Info("No running pods in StatefulSets.")
+	topologyManageLeader := cluster.Annotations["tarantool.io/topology-manage-leader"]
+	exist, err := IsTopologyManageLeaderExists(r, stsList, topologyManageLeader)
+	if err != nil {
+		reqLogger.Info("Topology manage leader сheck failed, reconcile again", "error", err)
 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 	}
 
-	clusterDomainName, ok := cluster.GetLabels()["tarantool.io/cluster-domain-name"]
-	if !ok {
-		clusterDomainName = "cluster.local"
+	if !exist {
+		newLeader, err := SelectTopologyManageLeader(r, stsList)
+		if err != nil {
+			reqLogger.Info("Select topology manage leader failed, reconcile again", "error", err)
+			return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+		}
+		reqLogger.Info("Select new join leader", "addr", newLeader)
+
+		clusterAnnotations := cluster.GetAnnotations()
+		if clusterAnnotations == nil {
+			clusterAnnotations = map[string]string{}
+		}
+		clusterAnnotations["tarantool.io/topology-manage-leader"] = newLeader
+		cluster.SetAnnotations(clusterAnnotations)
+
+		if err := r.Update(context.TODO(), cluster); err != nil {
+			reqLogger.Info("Update cluster annotations failed", "error", err)
+			return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+		}
+
+		return ctrl.Result{}, nil
 	}
 
-	joinHost := fmt.Sprintf("%s.%s.%s.svc.%s:8081",
-		joinPod.GetObjectMeta().GetName(),      // Instance name
-		cluster.GetName(),                      // Cartridge cluster name
-		joinPod.GetObjectMeta().GetNamespace(), // Namespace
-		clusterDomainName)                      // Cluster domain name
-
 	topologyClient := topology.NewBuiltInTopologyService(
-		topology.WithTopologyEndpoint(fmt.Sprintf("http://%s/admin/api", joinHost)),
+		topology.WithTopologyEndpoint(
+			fmt.Sprintf("http://%s/admin/api", topologyManageLeader),
+		),
 		topology.WithClusterID(cluster.GetName()),
 	)
 

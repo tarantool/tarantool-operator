@@ -13,6 +13,8 @@ import (
 	"github.com/machinebox/graphql"
 	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/tarantool/tarantool-operator/controllers/utils"
 )
 
 // ResponseError .
@@ -217,11 +219,10 @@ func (s *BuiltInTopologyService) Join(pod *corev1.Pod) error {
 		clusterDomainName = "cluster.local"
 	}
 
-	advURI := fmt.Sprintf("%s.%s.%s.svc.%s:3301",
-		pod.GetObjectMeta().GetName(),      // Instance name
-		s.clusterID,                        // Cartridge cluster name
-		pod.GetObjectMeta().GetNamespace(), // Namespace
-		clusterDomainName)                  // Cluster domain name
+	podMeta := pod.GetObjectMeta()
+
+	advURI := utils.MakeStaticPodAddr(
+		podMeta.GetName(), s.clusterID, podMeta.GetNamespace(), clusterDomainName, 3301)
 
 	replicasetUUID, ok := thisPodLabels["tarantool.io/replicaset-uuid"]
 	if !ok {

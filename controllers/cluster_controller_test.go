@@ -11,10 +11,13 @@ import (
 
 	helpers "github.com/tarantool/tarantool-operator/test/helpers"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	tarantooliov1alpha1 "github.com/tarantool/tarantool-operator/api/v1alpha1"
+	"github.com/tarantool/tarantool-operator/controllers/utils"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,6 +29,23 @@ func RandStringRunes(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+type MockClient struct {
+	Items []client.Object
+}
+
+func (c MockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+	for _, o := range c.Items {
+		if key.Name == o.GetName() && key.Namespace == o.GetNamespace() {
+			obj = o
+		}
+	}
+	return nil
+}
+
+func (c MockClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return nil
 }
 
 var _ = Describe("cluster_controller unit testing", func() {
@@ -40,6 +60,8 @@ var _ = Describe("cluster_controller unit testing", func() {
 		clusterId   = clusterName
 
 		defaultRolesToAssign = "[\"A\",\"B\"]"
+		podName              = ""
+		serviceName          = clusterName
 	)
 
 	Describe("cluster_controller manage cluster resources", func() {
@@ -95,81 +117,72 @@ var _ = Describe("cluster_controller unit testing", func() {
 			Expect(k8sClient.Delete(ctx, cluster)).NotTo(HaveOccurred(), "failed to delete Cluster")
 		})
 
-		Context("manage cluster leader: tarantool instance accepting admin requests", func() {
+		Context("manage cluster leader", func() {
 			BeforeEach(func() {
-				By("create cluster endpoints")
-				ep := corev1.Endpoints{
+				// By ReplicasetTemplate object Role controller creating StatefulSets
+				rsTemplate := helpers.NewReplicasetTemplate(helpers.ReplicasetTemplateParams{
+					Name:           rsTemplateName,
+					Namespace:      namespace,
+					RoleName:       roleName,
+					RolesToAssign:  defaultRolesToAssign,
+					ContainerImage: "image:0.0.0",
+					ContainerName:  "test",
+					ServiceName:    serviceName,
+				})
+				Expect(k8sClient.Create(ctx, &rsTemplate)).NotTo(HaveOccurred(), "failed to create ReplicasetTemplate")
+
+				// But, if tests running in envtest k8s cluster
+				// StatefulSet controller not active and we need to run
+				// required pod handly
+				podName = roleName + "-0-0"
+				pod := &corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      clusterId,
+						Name:      podName,
 						Namespace: namespace,
-					},
-					Subsets: []corev1.EndpointSubset{
-						{
-							Addresses: []corev1.EndpointAddress{
-								{IP: "1.1.1.1"},
-								{IP: "2.2.2.2"},
-								{IP: "3.3.3.3"},
-							},
+						Labels: map[string]string{
+							"tarantool.io/cluster-id": clusterId,
 						},
 					},
+					Spec: rsTemplate.Spec.Template.Spec,
 				}
-				Expect(k8sClient.Create(ctx, &ep)).NotTo(HaveOccurred(), "failed to create cluster endpoints")
+				Expect(k8sClient.Create(ctx, pod)).NotTo(HaveOccurred(), "failed to create Pod")
 			})
 
 			AfterEach(func() {
-				ep := corev1.Endpoints{}
+				rsTemplate := &tarantooliov1alpha1.ReplicasetTemplate{}
 				Expect(
-					k8sClient.Get(ctx, client.ObjectKey{Name: clusterId, Namespace: namespace}, &ep),
-				).NotTo(HaveOccurred(), "failed to get cluster endpoints")
+					k8sClient.Get(ctx, client.ObjectKey{Name: rsTemplateName, Namespace: namespace}, rsTemplate)
+				).NotTo(HaveOccurred(), "failed to get ReplicasetTemplate")
 
-				Expect(k8sClient.Delete(ctx, &ep)).NotTo(HaveOccurred(), "failed to delete endpoints")
+				Expect(
+					k8sClient.Delete(ctx, rsTemplate)
+				).NotTo(HaveOccurred(), "failed to delete ReplicasetTemplate")
+
+				pod := &corev1.Pod{}
+				Expect(
+					k8sClient.Get(ctx, client.ObjectKey{Name: podName, Namespace: namespace}, pod)
+				).NotTo(HaveOccurred(), "failed to get Pod")
+
+				Expect(
+					k8sClient.Delete(ctx, pod)
+				).NotTo(HaveOccurred(), "failed to delete Pod")
 			})
 
-			It("change the leader if the previous one does not exist", func() {
-				By("get the chosen leader")
-				ep := corev1.Endpoints{}
+			It("change leader if it is not defined", func() {
+				expectedLeader := utils.MakeStaticPodAddr(podName, serviceName, namespace, "", 8081)
 				Eventually(
 					func() bool {
-						err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterId, Namespace: namespace}, &ep)
+						cluster := tarantooliov1alpha1.Cluster{}
+						err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterId, Namespace: namespace}, &cluster)
 						if err != nil {
 							return false
 						}
 
-						if ep.GetAnnotations()["tarantool.io/leader"] != "" {
+						leader := cluster.GetAnnotations()["tarantool.io/topology-manage-leader"]
+						if leader == expectedLeader {
 							return true
 						}
 
-						return false
-					},
-					time.Second*100, time.Millisecond*500,
-				).Should(BeTrue())
-
-				By("save old leader")
-				oldLeader := ep.GetAnnotations()["tarantool.io/leader"]
-
-				By("set all new IP addresses")
-				ep.Subsets = []corev1.EndpointSubset{
-					{
-						Addresses: []corev1.EndpointAddress{
-							{IP: "4.4.4.4"},
-							{IP: "5.5.5.5"},
-							{IP: "6.6.6.6"},
-						},
-					},
-				}
-				Expect(k8sClient.Update(ctx, &ep)).NotTo(HaveOccurred(), "failed to update cluster endpoints")
-
-				By("check that the leader has changed")
-				Eventually(
-					func() bool {
-						err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterId, Namespace: namespace}, &ep)
-						if err != nil {
-							return false
-						}
-
-						if ep.GetAnnotations()["tarantool.io/leader"] != oldLeader {
-							return true
-						}
 						return false
 					},
 					time.Second*10, time.Millisecond*500,
@@ -178,61 +191,73 @@ var _ = Describe("cluster_controller unit testing", func() {
 		})
 	})
 
-	Describe("cluster_contriller unit testing functions", func() {
-		Describe("function IsLeaderExists must check for existence of leader in annotation of cluster Endpoints", func() {
+	Describe("cluster_controller.IsTopologyManageLeaderExists test", func() {
+		Describe("the function must return true if the leader is exist and false if not exist", func() {
 			Context("positive cases (leader exist)", func() {
-				It("should return True if leader assigned and exist", func() {
-					leaderIP := "1.1.1.1"
+				It("return True if leader assigned and exist", func() {
+					replicasNum := int32(1)
 
-					ep := &corev1.Endpoints{
+					sts := appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "name",
-							Namespace: "namespace",
-							Annotations: map[string]string{
-								"tarantool.io/leader": fmt.Sprintf("%s:8081", leaderIP),
-							},
+							Name:      "sts-0",
+							Namespace: "ns",
 						},
-						Subsets: []corev1.EndpointSubset{
-							{
-								Addresses: []corev1.EndpointAddress{
-									{IP: leaderIP},
-								},
-							},
+						Spec: appsv1.StatefulSetSpec{
+							ServiceName: "svc-0",
+							Replicas:    &replicasNum,
 						},
 					}
-					Expect(IsLeaderExists(ep)).To(BeTrue())
+
+					stsList := appsv1.StatefulSetList{
+						Items: []appsv1.StatefulSet{sts},
+					}
+
+					podName := sts.Name + "-0"
+					leader := utils.MakeStaticPodAddr(
+						podName, sts.Spec.ServiceName, sts.Namespace, "", 8081)
+
+					c := MockClient{
+						Items: []client.Object{&stsList.Items[0]},
+					}
+
+					Expect(IsTopologyManageLeaderExists(c, &stsList, leader)).To(BeTrue())
 				})
 			})
 
 			Context("negative cases (leader does not exist)", func() {
-				It("should return False if leader not assigned", func() {
-					ep := &corev1.Endpoints{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "name",
-							Namespace: "namespace",
-						},
-					}
-					Expect(IsLeaderExists(ep)).To(BeFalse())
+				It("return False if stsList empty", func() {
+					c := MockClient{}
+					stsList := appsv1.StatefulSetList{}
+
+					leader := utils.MakeStaticPodAddr("pod", "svc", "ns", "", 8081)
+					Expect(IsTopologyManageLeaderExists(c, &stsList, leader)).To(BeFalse())
 				})
 
-				It("should return False if leader assigned, but IP not exists", func() {
-					ep := &corev1.Endpoints{
+				It("return False if leader not in the StatefulSet list", func() {
+					replicasNum := int32(1)
+
+					sts := appsv1.StatefulSet{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "name",
-							Namespace: "namespace",
-							Annotations: map[string]string{
-								"tarantool.io/leader": "6.6.6.6:8081",
-							},
+							Name:      "sts-0",
+							Namespace: "ns",
 						},
-						Subsets: []corev1.EndpointSubset{
-							{
-								Addresses: []corev1.EndpointAddress{
-									{IP: "0.0.0.0"},
-								},
-							},
+						Spec: appsv1.StatefulSetSpec{
+							ServiceName: "svc-0",
+							Replicas:    &replicasNum,
 						},
 					}
-					Expect(IsLeaderExists(ep)).To(BeFalse())
+
+					stsList := appsv1.StatefulSetList{
+						Items: []appsv1.StatefulSet{sts},
+					}
+
+					leader := utils.MakeStaticPodAddr("unexistent", "svc", "ns", "", 8081)
+
+					c := MockClient{
+						Items: []client.Object{&stsList.Items[0]},
+					}
+
+					Expect(IsTopologyManageLeaderExists(c, &stsList, leader)).To(BeFalse())
 				})
 			})
 		})
