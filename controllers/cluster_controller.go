@@ -86,12 +86,12 @@ func SetInstanceUUID(o *corev1.Pod) *corev1.Pod {
 	return o
 }
 
-// SelectTopologyManageLeader selects the first pod from
+// SelectTopologyLeader selects the first pod from
 // the first non-empty StatefulSet
 // return leader, nil if leader selected
 // return "", err if possible leader not available
 // return "", error("not found") if there are no pods in the cluster
-func SelectTopologyManageLeader(c client.Reader, stsList *appsv1.StatefulSetList) (string, error) {
+func SelectTopologyLeader(c client.Reader, stsList *appsv1.StatefulSetList) (string, error) {
 	for _, sts := range stsList.Items {
 		if int(*sts.Spec.Replicas) == 0 {
 			continue
@@ -117,12 +117,12 @@ func SelectTopologyManageLeader(c client.Reader, stsList *appsv1.StatefulSetList
 	return "", fmt.Errorf("not found")
 }
 
-// IsTopologyManageLeaderExists checks that the passed leader
+// IsTopologyLeaderExists checks that the passed leader
 // is exists and is available in the cluster
 // return true, nil if leader exists and available
 // return false, nil if leader does not exist
 // return false, err if leader is not available
-func IsTopologyManageLeaderExists(c client.Reader, stsList *appsv1.StatefulSetList, leader string) (bool, error) {
+func IsTopologyLeaderExists(c client.Reader, stsList *appsv1.StatefulSetList, leader string) (bool, error) {
 	for _, sts := range stsList.Items {
 		if int(*sts.Spec.Replicas) == 0 {
 			continue
@@ -255,39 +255,37 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, err
 	}
 
-	topologyManageLeader := cluster.Annotations["tarantool.io/topology-manage-leader"]
-	exist, err := IsTopologyManageLeaderExists(r, stsList, topologyManageLeader)
+	clusterAnnotations := cluster.GetAnnotations()
+	if clusterAnnotations == nil {
+		clusterAnnotations = map[string]string{}
+	}
+
+	topologyLeader := clusterAnnotations["tarantool.io/topology-leader"]
+	exist, err := IsTopologyLeaderExists(r, stsList, topologyLeader)
 	if err != nil {
-		reqLogger.Info("Topology manage leader сheck failed, reconcile again", "error", err)
+		reqLogger.Info("Topology leader сheck failed, reconcile again", "error", err)
 		return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 	}
 
 	if !exist {
-		newLeader, err := SelectTopologyManageLeader(r, stsList)
+		newLeader, err := SelectTopologyLeader(r, stsList)
 		if err != nil {
-			reqLogger.Info("Select topology manage leader failed, reconcile again", "error", err)
+			reqLogger.Info("Select topology leader failed, reconcile again", "error", err)
 			return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
 		}
-		reqLogger.Info("Select new join leader", "addr", newLeader)
+		reqLogger.Info("Select new topology leader", "addr", newLeader)
 
-		clusterAnnotations := cluster.GetAnnotations()
-		if clusterAnnotations == nil {
-			clusterAnnotations = map[string]string{}
-		}
-		clusterAnnotations["tarantool.io/topology-manage-leader"] = newLeader
+		clusterAnnotations["tarantool.io/topology-leader"] = newLeader
 		cluster.SetAnnotations(clusterAnnotations)
 
 		if err := r.Update(context.TODO(), cluster); err != nil {
-			reqLogger.Info("Update cluster annotations failed", "error", err)
-			return ctrl.Result{RequeueAfter: time.Duration(5 * time.Second)}, nil
+			return ctrl.Result{}, fmt.Errorf("Update cluster annotations failed: %s", err)
 		}
-
-		return ctrl.Result{}, nil
 	}
 
 	topologyClient := topology.NewBuiltInTopologyService(
 		topology.WithTopologyEndpoint(
-			fmt.Sprintf("http://%s/admin/api", topologyManageLeader),
+			fmt.Sprintf("http://%s/admin/api", topologyLeader),
 		),
 		topology.WithClusterID(cluster.GetName()),
 	)

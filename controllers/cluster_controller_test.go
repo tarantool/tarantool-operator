@@ -181,7 +181,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 							return false
 						}
 
-						leader := cluster.GetAnnotations()["tarantool.io/topology-manage-leader"]
+						leader := cluster.GetAnnotations()["tarantool.io/topology-leader"]
 						return leader == expectedLeader
 					},
 					time.Second*10, time.Millisecond*500,
@@ -190,7 +190,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 		})
 	})
 
-	Describe("cluster_controller.IsTopologyManageLeaderExists test", func() {
+	Describe("cluster_controller.IsTopologyLeaderExists test", func() {
 		Describe("the function must return true if the leader is exist and false if not exist", func() {
 			Context("positive cases (leader exist)", func() {
 				It("return True if leader assigned and exist", func() {
@@ -219,7 +219,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 						Items: []client.Object{&stsList.Items[0]},
 					}
 
-					Expect(IsTopologyManageLeaderExists(c, &stsList, leader)).To(BeTrue())
+					Expect(IsTopologyLeaderExists(c, &stsList, leader)).To(BeTrue())
 				})
 			})
 
@@ -229,7 +229,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 					stsList := appsv1.StatefulSetList{}
 
 					leader := utils.MakeStaticPodAddr("pod", "svc", "ns", "", 8081)
-					Expect(IsTopologyManageLeaderExists(c, &stsList, leader)).To(BeFalse())
+					Expect(IsTopologyLeaderExists(c, &stsList, leader)).To(BeFalse())
 				})
 
 				It("return False if leader not in the StatefulSet list", func() {
@@ -256,7 +256,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 						Items: []client.Object{&stsList.Items[0]},
 					}
 
-					Expect(IsTopologyManageLeaderExists(c, &stsList, leader)).To(BeFalse())
+					Expect(IsTopologyLeaderExists(c, &stsList, leader)).To(BeFalse())
 				})
 			})
 		})
