@@ -41,7 +41,7 @@ func (c MockClient) Get(ctx context.Context, key client.ObjectKey, obj client.Ob
 	}
 	for _, o := range c.Items {
 		if key.Name == o.GetName() && key.Namespace == o.GetNamespace() {
-			obj = o
+			obj = o //nolint
 		}
 	}
 	return nil
