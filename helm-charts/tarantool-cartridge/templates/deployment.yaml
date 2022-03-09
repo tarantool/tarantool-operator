@@ -46,6 +46,7 @@ spec:
         name: www
       spec:
         accessModes: ["ReadWriteOnce"]
+        storageClassName: "csi-ceph-ssd-dp1"
         resources:
           requests:
             storage: {{ .DiskSize }}
