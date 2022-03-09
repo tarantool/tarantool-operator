@@ -56,64 +56,73 @@ entries:
     - https://github.com/tarantool/tarantool-operator/releases/download/cartridge-0.0.4/cartridge-0.0.4.tgz
     version: 0.0.4
   tarantool-operator:
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2021-03-30T18:54:02.198483546+03:00"
-    description: kubernetes tarantool operator
-    digest: 01f2013b45a708547b4134ef93b016ff398f274552da922fbe14202cfb1914a6
-    name: tarantool-operator
-    type: application
-    urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.9/tarantool-operator-0.0.9.tgz
-    version: 0.0.9
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-12-16T15:40:01.708997558+03:00"
-    description: kubernetes tarantool operator
-    digest: 52309ab80ebbc43b7242e6b08a4e2c3689a877421983213d04838576e4ed441e
-    name: tarantool-operator
-    type: application
-    urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.8/tarantool-operator-0.0.8.tgz
-    version: 0.0.8
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-10-07T10:30:03.272022+03:00"
-    description: kubernetes tarantool operator
-    digest: c89c0ef330ec15ef001335dcfefabd5e60ef1f8ba6c55478eb7249d0c4fee15e
-    name: tarantool-operator
-    type: application
-    urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.7/tarantool-operator-0.0.7.tgz
-    version: 0.0.7
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-10-02T10:45:24.769395+03:00"
-    description: kubernetes tarantool operator
-    digest: e1665a82d2839347711ea473360aa0cb53a494e241a50ae982ae0d768dfedfce
-    name: tarantool-operator
-    type: application
-    urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.6/tarantool-operator-0.0.6.tgz
-    version: 0.0.6
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-09-14T19:20:54.236537+03:00"
-    description: kubernetes tarantool operator
-    digest: e35ae03c173c52bf16b3ac9a0a941765ec046760b1622347c5163580afb4d3ca
-    name: tarantool-operator
-    type: application
-    urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.5/tarantool-operator-0.0.5.tgz
-    version: 0.0.5
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-09-10T16:58:24.46789+03:00"
-    description: kubernetes tarantool operator
-    digest: a72ad7d8b04adba311d4599437c5d1bf90ceeff3ffef4e206ec4cb8bd648b9db
-    name: tarantool-operator
-    type: application
-    urls:
-    - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.4/tarantool-operator-0.0.4.tgz
-    version: 0.0.4
-generated: "2020-09-10T16:58:23.790193+03:00"
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2022-03-05T16:58:12.643861+03:00"
+      description: kubernetes tarantool operator
+      digest: 5ee1c47e698fba3cde3d8ce00f4ed792e8e7f702e8034d608df20bc9b627b3c1
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://tarantool.github.io/tarantool-operator/tarantool-operator-0.0.10.tgz
+      version: 0.0.10
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2021-03-30T18:54:02.198483546+03:00"
+      description: kubernetes tarantool operator
+      digest: 01f2013b45a708547b4134ef93b016ff398f274552da922fbe14202cfb1914a6
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.9/tarantool-operator-0.0.9.tgz
+      version: 0.0.9
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2020-12-16T15:40:01.708997558+03:00"
+      description: kubernetes tarantool operator
+      digest: 52309ab80ebbc43b7242e6b08a4e2c3689a877421983213d04838576e4ed441e
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.8/tarantool-operator-0.0.8.tgz
+      version: 0.0.8
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2020-10-07T10:30:03.272022+03:00"
+      description: kubernetes tarantool operator
+      digest: c89c0ef330ec15ef001335dcfefabd5e60ef1f8ba6c55478eb7249d0c4fee15e
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.7/tarantool-operator-0.0.7.tgz
+      version: 0.0.7
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2020-10-02T10:45:24.769395+03:00"
+      description: kubernetes tarantool operator
+      digest: e1665a82d2839347711ea473360aa0cb53a494e241a50ae982ae0d768dfedfce
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.6/tarantool-operator-0.0.6.tgz
+      version: 0.0.6
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2020-09-14T19:20:54.236537+03:00"
+      description: kubernetes tarantool operator
+      digest: e35ae03c173c52bf16b3ac9a0a941765ec046760b1622347c5163580afb4d3ca
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.5/tarantool-operator-0.0.5.tgz
+      version: 0.0.5
+    - apiVersion: v2
+      appVersion: 1.16.0
+      created: "2020-09-10T16:58:24.46789+03:00"
+      description: kubernetes tarantool operator
+      digest: a72ad7d8b04adba311d4599437c5d1bf90ceeff3ffef4e206ec4cb8bd648b9db
+      name: tarantool-operator
+      type: application
+      urls:
+        - https://github.com/tarantool/tarantool-operator/releases/download/tarantool-operator-0.0.4/tarantool-operator-0.0.4.tgz
+      version: 0.0.4
