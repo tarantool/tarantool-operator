@@ -46,6 +46,7 @@ spec:
         name: www
       spec:
         accessModes: ["ReadWriteOnce"]
+        storageClassName: "csi-ceph-ssd-dp1"
         resources:
           requests:
             storage: {{ .DiskSize }}
@@ -68,7 +69,7 @@ spec:
           - name: ndots
             value: "1"
       securityContext:
-        fsGroup: {{ .securityContext.fsGroup }}
+        fsGroup: {{ $.Values.securityContext.fsGroup }}
       containers:
         - name: pim-storage
           image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"

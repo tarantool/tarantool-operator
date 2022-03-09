@@ -64,7 +64,7 @@ entries:
       name: tarantool-operator
       type: application
       urls:
-        - https://tarantool.github.io/tarantool-operator/tarantool-operator-0.0.10.tgz
+        - https://tarantool.github.io/tarantool-operator/releases/download/tarantool-operator-0.0.10/tarantool-operator-0.0.10.tgz
       version: 0.0.10
     - apiVersion: v2
       appVersion: 1.16.0
