@@ -143,7 +143,7 @@ helm-uninstall-operator: ## Uninstall tarantool-operator.
 	helm uninstall -n tarantool-operator operator
 
 helm-install-cartridge-app: ## Install cartridge-app with tarantool-cartridge helm chart.
-	helm install -n tarantool-app cartridge-app $(CHARTS_DIR)/tarantool-cartridge \
+	helm upgrade --install -n tarantool-app cartridge-app $(CHARTS_DIR)/tarantool-cartridge \
 	             --create-namespace \
 	             --set LuaMemoryReserveMB=0 # default reserve too large for local minikube cluster
 
