@@ -85,11 +85,11 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 gotest:
-	KUBECONFIG=$(KIND_KUBECONFIG) go test ./... -coverprofile cover.out ;
+	go test ./... -coverprofile cover.out ;
 
 test: manifests generate fmt vet kind-start
 	echo "Run tests" ; \
-	$(MAKE) gotest || ($(MAKE) kind-stop || true; exit 1); \
+	$(MAKE) gotest KUBECONFIG=$(KIND_KUBECONFIG) || ($(MAKE) kind-stop || true; exit 1); \
  	$(MAKE) kind-stop || true ;
 
 ##@ KIND Cluster. More info: https://kind.sigs.k8s.io/docs
