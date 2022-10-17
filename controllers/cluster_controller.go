@@ -176,8 +176,9 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			svc.Name = cluster.GetName()
 			svc.Namespace = cluster.GetNamespace()
 			svc.Spec = corev1.ServiceSpec{
-				Selector:  cluster.Spec.Selector.MatchLabels,
-				ClusterIP: "None",
+				PublishNotReadyAddresses: true,
+				Selector:                 cluster.Spec.Selector.MatchLabels,
+				ClusterIP:                "None",
 				Ports: []corev1.ServicePort{
 					{
 						Name:     "app",
