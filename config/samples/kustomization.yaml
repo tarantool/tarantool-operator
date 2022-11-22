@@ -3,4 +3,7 @@ resources:
 - tarantool.io_v1alpha1_cluster.yaml
 - tarantool.io_v1alpha1_replicasettemplate.yaml
 - tarantool.io_v1alpha1_role.yaml
+- tarantool.io_v1alpha2_cluster.yaml
+- tarantool.io_v1alpha2_role.yaml
+- tarantool.io_v1alpha2_cartridgeconfig.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

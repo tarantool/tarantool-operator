@@ -1,0 +1,6 @@
+apiVersion: tarantool.io/v1alpha2
+kind: CartridgeConfig
+metadata:
+  name: cartridgeconfig-sample
+spec:
+  # TODO(user): Add fields here

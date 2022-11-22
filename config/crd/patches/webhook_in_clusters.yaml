@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   name: clusters.tarantool.io
 spec:
+  preserveUnknownFields: true
   conversion:
     strategy: Webhook
     webhook:

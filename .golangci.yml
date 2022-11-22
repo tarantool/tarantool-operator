@@ -1,0 +1,54 @@
+run:
+  timeout: 5m
+  go: '1.19'
+
+linters:
+  enable-all: true
+  disable:
+    - nosnakecase # Replaced by 'unused'
+    - varcheck # Replaced by 'unused'
+    - deadcode # Replaced by 'unused
+    - golint # Replaced by 'revive'
+    - exhaustivestruct # Replaced by 'exhaustruct'
+    - interfacer # The repository of the linter has been archived by the owner
+    - scopelint # Replaced by 'exportloopref'
+    - ifshort # The repository of the linter has been deprecated by the owner
+    - maligned # Replaced by govet 'fieldalignment'
+    - structcheck # Replaced by 'unused'
+    - rowserrcheck # is disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649
+    - sqlclosecheck # is disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649
+    - wastedassign # is disabled because of generics. You can track the evolution of the generics support by following the https://github.com/golangci/golangci-lint/issues/2649
+
+    # Want to fix
+    - godox # we still have fixme's
+    - cyclop
+    - funlen
+    - revive # dot-imports
+    - stylecheck # dot-imports
+    - gomnd # dot-imports
+    - lll
+    - gocognit # Need to refactor 2 functions
+    - nestif # Need to refactor 2 functions
+    - goimports # see https://github.com/golangci/golangci-lint/issues/1490
+
+    # Not acceptable at all
+    - gochecknoinits
+    - exhaustruct
+    - gochecknoglobals
+    - paralleltest
+    - goerr113
+    - ireturn
+    - interfacebloat
+    - wrapcheck
+    - containedctx
+    - dupword
+    - nonamedreturns
+    - tagliatelle
+    - varnamelen
+    - nilnil
+
+issues:
+  exclude-rules:
+    - path: 'test/e2e/(.+)_test\.go'
+      linters:
+        - dupl

@@ -1,6 +1,7 @@
 domain: tarantool.io
 layout:
-- go.kubebuilder.io/v3
+  - go.kubebuilder.io/v3
+multigroup: true
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
@@ -34,4 +35,34 @@ resources:
   kind: Role
   path: github.com/tarantool/tarantool-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: tarantool.io
+  kind: Cluster
+  path: github.com/tarantool/tarantool-operator/apis/v1alpha2
+  version: v1alpha2
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: tarantool.io
+  kind: Role
+  path: github.com/tarantool/tarantool-operator/apis/v1alpha2
+  version: v1alpha2
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: tarantool.io
+  kind: FailoverConfig
+  path: github.com/tarantool/tarantool-operator/apis/v1alpha2
+  version: v1alpha2
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: tarantool.io
+  kind: CartridgeConfig
+  path: github.com/tarantool/tarantool-operator/apis/v1alpha2
+  version: v1alpha2
 version: "3"
