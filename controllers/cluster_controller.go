@@ -6,7 +6,7 @@ import (
 	"github.com/go-logr/logr"
 	. "github.com/tarantool/tarantool-operator/apis/v1alpha2"
 	. "github.com/tarantool/tarantool-operator/internal"
-	"github.com/tarantool/tarantool-operator/internal/implementation"
+	. "github.com/tarantool/tarantool-operator/internal/implementation"
 	. "github.com/tarantool/tarantool-operator/internal/steps"
 	"github.com/tarantool/tarantool-operator/pkg/election"
 	"github.com/tarantool/tarantool-operator/pkg/events"
@@ -59,7 +59,7 @@ func NewClusterReconciler(mgr Manager) *ClusterReconciler {
 	labelsManager := &k8s.NamespacedLabelsManager{
 		Namespace: "tarantool.io",
 	}
-	resourcesManager := &implementation.ResourcesManager{
+	resourcesManager := &ResourcesManager{
 		LabelsManager: labelsManager,
 		CommonResourcesManager: &k8s.CommonResourcesManager{
 			Client: k8sClient,
