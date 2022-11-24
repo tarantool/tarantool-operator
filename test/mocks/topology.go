@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/tarantool/tarantool-operator/pkg/topology"
 	"k8s.io/api/core/v1"
@@ -41,6 +42,7 @@ func (f *FakeCartridgeTopology) Join(
 		replicasetIsAllRw,
 		advertiseURI,
 	)
+
 	return args.Error(0)
 }
 

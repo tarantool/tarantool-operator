@@ -49,6 +49,9 @@ linters:
 
 issues:
   exclude-rules:
-    - path: 'test/e2e/(.+)_test\.go'
+    - path: 'test/mocks/(.+)\.go'
       linters:
-        - dupl
+        - forcetypeassert
+    - path: 'test/utils/(.+)\.go'
+      linters:
+        - gosec

@@ -2,20 +2,22 @@ package resources
 
 import (
 	"fmt"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (r *FakeCartridge) WithPodsCreated(roleName string) *FakeCartridge {
 	cluster := r.Cluster
+
 	role, ok := r.Roles[roleName]
 	if !ok {
-		panic(fmt.Errorf("role %s not added to fake cartrdige", roleName))
+		panic(fmt.Errorf("role %s not added to fake cartridge", roleName))
 	}
 
 	statefulSets, ok := r.StatefulSets[roleName]
 	if !ok {
-		panic(fmt.Errorf("stateful sets for role %s not added to fake cartrdige", roleName))
+		panic(fmt.Errorf("stateful sets for role %s not added to fake cartridge", roleName))
 	}
 
 	for _, sts := range statefulSets {
@@ -78,6 +80,7 @@ func (r *FakeCartridge) setPodContainerReady(pod *v1.Pod, containerName string) 
 	}
 
 	started := true
+
 	pod.Status.ContainerStatuses = append(
 		pod.Status.ContainerStatuses,
 		v1.ContainerStatus{

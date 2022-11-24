@@ -2,18 +2,21 @@ package resources
 
 import (
 	"fmt"
+
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func (r *FakeCartridge) WithStatefulSetsCreated(roleName string) *FakeCartridge {
 	cluster := r.Cluster
+
 	role, ok := r.Roles[roleName]
 	if !ok {
-		panic(fmt.Errorf("role %s not added to fake cartrdige", roleName))
+		panic(fmt.Errorf("role %s not added to fake cartridge", roleName))
 	}
 
 	r.StatefulSets[roleName] = map[string]*appsv1.StatefulSet{}
+
 	for stsNum := int32(0); stsNum < *role.Spec.Replicasets; stsNum++ {
 		stsName := fmt.Sprintf("%s-%d", role.Name, stsNum)
 		r.StatefulSets[roleName][stsName] = &appsv1.StatefulSet{

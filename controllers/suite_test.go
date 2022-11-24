@@ -2,11 +2,11 @@ package controllers_test
 
 import (
 	"context"
-	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
 	"k8s.io/client-go/kubernetes/scheme"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
