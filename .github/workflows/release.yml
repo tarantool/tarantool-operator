@@ -6,6 +6,7 @@ on:
       - published
   push:
     branches:
+      - master
       - v1alpha2
 
 jobs:
@@ -27,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ${{ secrets.DOCKER_REGISTRY }}/tarantool-operator
+          images: tarantool/tarantool-operator
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v3

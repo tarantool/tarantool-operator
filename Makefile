@@ -248,6 +248,10 @@ kustomize-warn:
 	@echo -e "*~*~* but $(CYELLOW)this is not a helm template yet and they need to be migrated to helm-charts.$(CEND)"
 	@echo
 
+kustomize-crds: kustomize-warn manifests generate kustomize ## Build rbac manifests for the helm chart using Kustomize.
+	@mkdir -p $(KUSTOMIZE_DIR)/crds/
+	$(KUSTOMIZE) build config/crd -o $(KUSTOMIZE_DIR)/crds/
+
 kustomize-rbac: kustomize-warn manifests generate kustomize ## Build rbac manifests for the helm chart using Kustomize.
 	@mkdir -p $(KUSTOMIZE_DIR)/rbac/
 	$(KUSTOMIZE) build config/rbac -o $(KUSTOMIZE_DIR)/rbac/
