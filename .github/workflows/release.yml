@@ -2,7 +2,8 @@ name: Release operator
 
 on:
   release:
-    types: [ published ]
+    types:
+      - published
   push:
     branches:
       - v1alpha2
