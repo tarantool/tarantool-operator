@@ -2,7 +2,7 @@
    <img src="https://static.tarantool.io/pub/221123-0838-43389b9/tarantool/images/current-logo.svg" align="right">
 </a>
 
-# Tarantool Community Kubernetes Operator
+# Tarantool Kubernetes Operator CE
 
 [![Tests][gh-test-actions-badge]][gh-actions-url]
 [![Lint][gh-lint-actions-badge]][gh-actions-url]
@@ -15,7 +15,7 @@ you can use the [Tarantool Operator Enterprise](https://www.tarantool.io/ru/kube
 
 ## IMPORTANT NOTICE
 
-Begins from v1.0.0-rc1 Tarantool Community Kubernetes Operator was completely rewrote.
+Begins from v1.0.0-rc1 Tarantool Kubernetes Operator CE was completely rewrote.
 
 API version was bumped and any backward compatibility was dropped.
 

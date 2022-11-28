@@ -1,4 +1,4 @@
-# Install Tarantool Community Kubernetes Operator
+# Install Tarantool Kubernetes Operator CE
 
 ## Table of Contents
 
