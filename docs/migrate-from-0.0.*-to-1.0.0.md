@@ -78,7 +78,7 @@ Do not try to blindly follow the instructions, think about your every step and m
    
    Your topology should look like:
 
-   <img style="./assets/before-migration.png"/>
+   <img src="./assets/before-migration.png"/>
 
 6. Manually delete legacy operator (**DO NOT USE HELM**)
 
