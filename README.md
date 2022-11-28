@@ -42,7 +42,7 @@ and receive useful information from comments in default [values.yaml](https://gi
 
 ## Contribute
 
-Please follow the [development guid](./docs/development-guide.md)
+Please follow the [development guide](./docs/development-guide.md)
 
 [gh-lint-actions-badge]: https://github.com/tarantool/tarantool-operator/actions/workflows/lint.yml/badge.svg
 [gh-test-actions-badge]: https://github.com/tarantool/tarantool-operator/actions/workflows/test.yml/badge.svg
