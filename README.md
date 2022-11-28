@@ -20,7 +20,7 @@ Begins from v1.0.0-rc1 Tarantool Kubernetes Operator CE was completely rewrote.
 API version was bumped and any backward compatibility was dropped.
 
 There is only one approved method to migrate from version 0.0.0 to versions >=1.0.0-rc1, 
-please follow [migration guide](./docs/migrate-from-0.0.*-to-1.0.0.md).
+please follow [migration guide](./docs/migrate-from-0.0.x-to-1.0.0.md).
 
 ## Table of contents
 
