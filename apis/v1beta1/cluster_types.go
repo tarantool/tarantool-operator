@@ -1,4 +1,4 @@
-package v1alpha2
+package v1beta1
 
 import (
 	"github.com/tarantool/tarantool-operator/pkg/api"

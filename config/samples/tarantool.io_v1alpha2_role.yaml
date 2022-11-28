@@ -1,4 +1,4 @@
-apiVersion: tarantool.io/v1alpha2
+apiVersion: tarantool.io/v1beta1
 kind: Role
 metadata:
   name: role-sample

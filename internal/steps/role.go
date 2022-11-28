@@ -1,7 +1,7 @@
 package steps
 
 import (
-	. "github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	. "github.com/tarantool/tarantool-operator/apis/v1beta1"
 	. "github.com/tarantool/tarantool-operator/internal"
 	"github.com/tarantool/tarantool-operator/pkg/reconciliation/steps/role"
 )

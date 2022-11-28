@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	"github.com/tarantool/tarantool-operator/apis/v1beta1"
 	"github.com/tarantool/tarantool-operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -26,7 +26,7 @@ var (
 func init() {
 	//+kubebuilder:scaffold:scheme
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(v1alpha2.AddToScheme(scheme))
+	utilruntime.Must(v1beta1.AddToScheme(scheme))
 }
 
 func main() {

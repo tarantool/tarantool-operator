@@ -1,7 +1,7 @@
 package resources
 
 import (
-	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	"github.com/tarantool/tarantool-operator/apis/v1beta1"
 	"github.com/tarantool/tarantool-operator/pkg/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
@@ -11,14 +11,14 @@ import (
 )
 
 func NewFakeCartridge(labelsManager k8s.LabelsManager) *FakeCartridge {
-	cluster := &v1alpha2.Cluster{
+	cluster := &v1beta1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{},
-		Spec: v1alpha2.ClusterSpec{
+		Spec: v1beta1.ClusterSpec{
 			Domain:     DefaultDomain,
 			ListenPort: DefaultListenPort,
 		},
-		Status: v1alpha2.ClusterStatus{
-			Phase:        v1alpha2.ClusterPending,
+		Status: v1beta1.ClusterStatus{
+			Phase:        v1beta1.ClusterPending,
 			Leader:       "",
 			Bootstrapped: false,
 		},
@@ -27,7 +27,7 @@ func NewFakeCartridge(labelsManager k8s.LabelsManager) *FakeCartridge {
 	builder := &FakeCartridge{
 		labelsManager: labelsManager,
 		Cluster:       cluster,
-		Roles:         map[string]*v1alpha2.Role{},
+		Roles:         map[string]*v1beta1.Role{},
 		StatefulSets:  map[string]map[string]*appsv1.StatefulSet{},
 		objects: []client.Object{
 			cluster,
@@ -40,8 +40,8 @@ func NewFakeCartridge(labelsManager k8s.LabelsManager) *FakeCartridge {
 type FakeCartridge struct {
 	labelsManager k8s.LabelsManager
 
-	Cluster      *v1alpha2.Cluster
-	Roles        map[string]*v1alpha2.Role
+	Cluster      *v1beta1.Cluster
+	Roles        map[string]*v1beta1.Role
 	StatefulSets map[string]map[string]*appsv1.StatefulSet
 	Pods         []*v1.Pod
 

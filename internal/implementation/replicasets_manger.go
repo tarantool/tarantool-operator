@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	"github.com/tarantool/tarantool-operator/apis/v1beta1"
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	"github.com/tarantool/tarantool-operator/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
@@ -22,7 +22,7 @@ type ReplicasetsManger struct {
 	UUIDSpace uuid.UUID
 }
 
-func (r *ReplicasetsManger) GetReplicasetUUID(role *v1alpha2.Role, ordinal int32) string {
+func (r *ReplicasetsManger) GetReplicasetUUID(role *v1beta1.Role, ordinal int32) string {
 	replicasetUUID := uuid.NewSHA1(
 		r.UUIDSpace,
 		[]byte(fmt.Sprintf("%s-%d", role.GetName(), ordinal)),
@@ -42,7 +42,7 @@ func (r *ReplicasetsManger) GetAdvertiseURI(cluster api.Cluster, pod *v1.Pod) st
 	)
 }
 
-func (r *ReplicasetsManger) CreateStatefulSets(ctx context.Context, cluster api.Cluster, role *v1alpha2.Role) error {
+func (r *ReplicasetsManger) CreateStatefulSets(ctx context.Context, cluster api.Cluster, role *v1beta1.Role) error {
 	for ordinal := int32(0); ordinal < role.GetReplicasets(); ordinal++ {
 		selector := r.LabelsManager.SelectorByReplicasetOrdinal(role, ordinal)
 
@@ -64,7 +64,7 @@ func (r *ReplicasetsManger) CreateStatefulSets(ctx context.Context, cluster api.
 	return nil
 }
 
-func (r *ReplicasetsManger) UpdateStatefulSets(ctx context.Context, cluster api.Cluster, role *v1alpha2.Role) (complete bool, err error) {
+func (r *ReplicasetsManger) UpdateStatefulSets(ctx context.Context, cluster api.Cluster, role *v1beta1.Role) (complete bool, err error) {
 	var (
 		updated bool
 		ordinal int64
@@ -98,7 +98,7 @@ func (r *ReplicasetsManger) UpdateStatefulSets(ctx context.Context, cluster api.
 	return done, nil
 }
 
-func (r *ReplicasetsManger) createStatefulSet(ctx context.Context, cluster api.Cluster, role *v1alpha2.Role, ordinal int32) error {
+func (r *ReplicasetsManger) createStatefulSet(ctx context.Context, cluster api.Cluster, role *v1beta1.Role, ordinal int32) error {
 	stsName, err := role.GetReplicasetName(ordinal)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func (r *ReplicasetsManger) createStatefulSet(ctx context.Context, cluster api.C
 	return r.CreateObject(ctx, sts)
 }
 
-func (r *ReplicasetsManger) updateStatefulSet(ctx context.Context, cluster api.Cluster, role *v1alpha2.Role, sts *appsv1.StatefulSet, ordinal int32) (bool, error) {
+func (r *ReplicasetsManger) updateStatefulSet(ctx context.Context, cluster api.Cluster, role *v1beta1.Role, sts *appsv1.StatefulSet, ordinal int32) (bool, error) {
 	replicasetUUID := r.GetReplicasetUUID(role, ordinal)
 
 	changed, err := r.syncStatefulSet(cluster, role, sts, ordinal, replicasetUUID)
@@ -167,7 +167,7 @@ func (r *ReplicasetsManger) updateStatefulSet(ctx context.Context, cluster api.C
 
 func (r *ReplicasetsManger) syncStatefulSet(
 	cluster api.Cluster,
-	role *v1alpha2.Role,
+	role *v1beta1.Role,
 	sts *appsv1.StatefulSet,
 	ordinal int32,
 	replicasetUUID string,

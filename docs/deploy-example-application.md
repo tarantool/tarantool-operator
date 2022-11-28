@@ -29,18 +29,19 @@ To install or upgrade the Cartridge App using Helm, run following commands from 
 
 ### Useful helm variables
 
-| JSON Path                                                      | Type          | Description                                   |
-|----------------------------------------------------------------|---------------|-----------------------------------------------|
-| dockerconfigjson                                               | array         | Docker registry(ies) credentials              |
-| storageClass                                                   | string        | An StorageClass name for requested disks      |
-| tarantool.image.repository                                     | string        | Name of application docker image              |
-| tarantool.image.tag                                            | string        | Tag of application docker image               |
-| tarantool.bucketCount                                          | number        | Count of vshard buckets                       |
-| tarantool.memtxMemory                                          | quantity      | Size of reserved memtx memory                 |
-| tarantool.auth.user                                            | string        | Tarantool super-admin username                |
-| tarantool.auth.password                                        | string        | Tarantool super-admin password/cluster cookie |
-| tarantool.roles                                                | array         | Roles definition                              |
-| tarantool.roles.*.replicasets                                  | number        | Count of replicasets in role                  |
-| tarantool.roles.*.replicas                                     | number        | Count of replicas in each replicaset o role   |
-| tarantool.roles.*.vshard.roles                                 | array<string> | List of vshard roles                          |
-| tarantool.roles.*.persistence.spec.resources.requests.storage  | quantity      | Size of disk for each instance of role        |
+| JSON Path                                                     | Type          | Description                                   |
+|---------------------------------------------------------------|---------------|-----------------------------------------------|
+| dockerconfigjson                                              | array         | Docker registry(ies) credentials              |
+| storageClass                                                  | string        | An StorageClass name for requested disks      |
+| tarantool.image.repository                                    | string        | Name of application docker image              |
+| tarantool.image.tag                                           | string        | Tag of application docker image               |
+| tarantool.bucketCount                                         | number        | Count of vshard buckets                       |
+| tarantool.memtxMemory                                         | quantity      | Size of reserved memtx memory                 |
+| tarantool.auth.user                                           | string        | Tarantool super-admin username                |
+| tarantool.auth.password                                       | string        | Tarantool super-admin password/cluster cookie |
+| tarantool.roles                                               | array         | Roles definition                              |
+| tarantool.roles.*.replicasets                                 | number        | Count of replicasets in role                  |
+| tarantool.roles.*.replicas                                    | number        | Count of replicas in each replicaset o role   |
+| tarantool.roles.*.vshard.weight                               | number        | Weight of replicasets in vshard               |
+| tarantool.roles.*.vshard.roles                                | array<string> | List of vshard roles                          |
+| tarantool.roles.*.persistence.spec.resources.requests.storage | quantity      | Size of disk for each instance of role        |

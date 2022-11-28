@@ -1,9 +1,22 @@
-# Migration guide from version 0.0.* to version ≥0.1.0
+# Migration guide from version 0.0.* to version ≥1.0.0-rc1
+
+## Disclaimer 
+
+Where is no "kubernetes"-way to upgrade from ~0.0.* to ≥1.0.0-rc1.
+
+Although this guide provides comprehensive information about the upgrade process, 
+it will be useful for you to understand the basic concepts of [tarantool cartridge](https://github.com/tarantool/cartridge), [vshard](https://github.com/tarantool/vshard), [kubernetes](https://kubernetes.io/) and [helm](https://helm.sh/).
+
+All applications built on the tarantool cartridge are unique. 
+
+It is impossible to know the features of each of them.
+
+Do not try to blindly follow the instructions, think about your every step and may the Force be with you.
 
 ## Terms
 
-- `legacy operator` - Tarantool operator in version <0.1.0
-- `new operator` - Tarantool operator in version ≥0.1.0
+- `legacy operator` - Tarantool operator in version <1.0.0-rc1
+- `new operator` - Tarantool operator in version ≥1.0.0-rc1
 
 ## Important
 
@@ -18,7 +31,7 @@
 ## Migration process
 
 1. Find out a namespace of your application
-2. Find out a most stable instance of your application in kubernetes pods and remember pod name
+2. Find out a most stable instance<sup>*</sup> of your application in kubernetes pods and remember pod name
 
    ```shell
    kubectl -n tarantool-app get pod
@@ -30,20 +43,28 @@
    
    It seems good to choose vshard-router or any other instance without data.
    In this migration guide we will use `routers-0-0` pod.
+
+   <sup>*</sup> most stable instance - in this context is an instance which usually choose to control your topology,
+   it can be any instance, but we recommend to choose a vshard-router.  
+
 3. Configure new helm chart for your application using pod name from previous step
 
+   - Replace `tarantool/tarantool-operator-examples-kv` with your docker image name
+   - Replace `0.0.7` with your docker image tag
+   
    ```yaml
    tarantool:
      foreignLeader: "routers-0-0"  # The name of pod from step 2 - most important field
-     bucketCount: 30000 # doest meter in migration flow
+     bucketCount: 30000 # doesn't matter in migration flow
      auth:
        password: "secret-cluster-cookie" # you should use your actual cluster cookie here 
      image:
        repository: tarantool/tarantool-operator-examples-kv
-       tag: 0.0.4
+       tag: 0.0.7
        pullPolicy: IfNotPresent
    roles: [...] # Your application roles here 
    ```
+   
 4. Add helm repository
    
    ```shell
@@ -51,12 +72,27 @@
    ```   
 
 5. Make sure you are ready to update, at next step you going to lose a way to rollback
+   - Make sure that all instances of your cartridge app is ready
+   - Make sure that where are no issues in you cartridge cluster
+   - Make sure that you have enough free resources in your kubernetes cluster
+   
+   Your topology should look like:
 
-6. Install new operator using official helm-chart of new operator
+   <img style="./assets/before-migration.png"/>
+
+6. Manually delete legacy operator (**DO NOT USE HELM**)
+
+   ```shell
+   kubectl delete ns tarantool-operator
+   ```
+   
+7. Install new operator using official helm-chart of new operator
+
    You can follow [installation guide](./installation.md) at this step
 
    ```shell
-   helm upgrade --install tarantool-operator-ce tarantool/tarantool-operator 
+   helm upgrade --install tarantool-operator-ce tarantool/tarantool-operator \
+   -n tarantool-operator-ce --create-namespace
    ```
    
    Custom resource definitions will not be updated by helm, you MUST update it manually:
@@ -66,38 +102,61 @@
    kubectl apply -f https://raw.githubusercontent.com/tarantool/helm-charts/master/charts/tarantool-operator/crds/apiextensions.k8s.io_v1_customresourcedefinition_clusters.tarantool.io.yaml
    kubectl apply -f https://raw.githubusercontent.com/tarantool/helm-charts/master/charts/tarantool-operator/crds/apiextensions.k8s.io_v1_customresourcedefinition_roles.tarantool.io.yaml
    ```
-   
-7. Manually delete legacy operator (**DO NOT USE HELM**)
-
-   ```shell
-   kubectl delete ns tarantool-operator
-   ```
 
 8. Wait for new operator to be ready
+       
+   You can check it by calling next command:
+   
+   ```shell
+   kubectl -n tarantool-operator-ce get deployments.apps
+   # Operator is ready when its deployment is ready. 
+   # Example NOT ready output
+   # NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+   # tarantool-operator-ce   0/1     1            0           10s
+   # Example ready output
+   # NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+   # tarantool-operator-ce   1/1     1            1           108s
+   ```
+    
 9. Install new cartridge helm chart using values file from step 3
+
+   You can follow [deploy example application guide](./deploy-example-application.md) at this step
 
    - **Make sure that new helm release have DIFFERENT NAME from old app**
      Replace `you-app` with name which you wish in following command.
    - **Make sure that new helm release have SAME NAMESPACE as old app**
      Replace `your-namespace` with name of namespace where your app was deployed.
-   - new cartridge app will be installed into you kubernetes cluster  
-   - replicasets of new app will join existing cartridge app immediately
-   - vshard will start buckets re-balancing immediately 
-   - it can produce lots of internal network traffic 
+   - To prevent immediately re-balancing of vshard buckets is **strictly recommend** to set  
+     zero weight for `vshard-storage` roles.
+   
+     You can do it by setting `tarantool.roles.*.vshard.weight` param in `values.yaml`
+   - New cartridge app will be installed into you kubernetes cluster  
+   - Replicasets of new app will join existing cartridge app immediately
 
    ```shell
-   helm upgrade --install -n your-namespace you-app tarantool/cartridge --values ./operator-values.yaml
+   helm upgrade --install -n your-namespace you-app tarantool/cartridge --values ./values.yaml
    ```
 
 10. Wait for all instances of deployed cartridge app to be ready
 11. At this step you need to **connect to Cartridge UI on any new instance** using port-forwarding or any other method 
 12. At this step in Cartridge UI you can see topology similar to following picture:
-    <img src="./assets/migration.png"> 
+    <img src="./assets/migration.png"/> 
     
     As you can see there are new and old instances joins one cartridge cluster
 
-13. Set zero weight on all old replicasets with vshard-storage role
-14. Wait until all buckets goes to new replicasets
+13. Manually switch weights on old replicasets and new replicaset to migrate buckets:
+    
+    - Choose one of old replicasets
+    - Remember its weight
+    - Choose one of new replicasets
+    - Set remembered weight on it 
+    - Set zero weight on chosen old replicaset
+    - Wait for to all buckets leaves old replicaset
+
+    Buckets migration can produce lots of internal network traffic, do it step by step.
+    It's **strictly recommended** to migrate 1 replicaset per time.  
+
+14. You can continue when step 13 completed for all old replicasets
 15. Disable and expel all old instance one by one
 16. Manually delete all of old resource (DO NOT USE HELM)
     

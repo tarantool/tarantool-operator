@@ -15,9 +15,11 @@ you can use the [Tarantool Operator Enterprise](https://www.tarantool.io/ru/kube
 
 ## IMPORTANT NOTICE
 
-Begins from v0.1.0 Tarantool Community Kubernetes Operator was completely rewrote.
+Begins from v1.0.0-rc1 Tarantool Community Kubernetes Operator was completely rewrote.
+
 API version was bumped and any backward compatibility was dropped.
-There is only one approved method to migrate from version 0.0.0 to versions >=0.1.0,
+
+There is only one approved method to migrate from version 0.0.0 to versions >=1.0.0-rc1, 
 please follow [migration guide](./docs/migrate-from-0.0.*-to-0.1.*.md).
 
 ## Table of contents

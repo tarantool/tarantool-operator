@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-	. "github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	. "github.com/tarantool/tarantool-operator/apis/v1beta1"
 	. "github.com/tarantool/tarantool-operator/internal"
 	"github.com/tarantool/tarantool-operator/internal/implementation"
 	. "github.com/tarantool/tarantool-operator/internal/steps"

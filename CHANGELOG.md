@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [0.1.0]
+## [1.0.0-rc1]
 
 ### Added
-- A completely new version of operator does not have any compatibility with versions less than 0.1.0 
-- Migration guide from 0.1.0
-- API `tarantoo.io/v1alpha2`
+- A completely new version of operator does not have any compatibility with versions less than 1.0.0-rc1 
+- Migration guide from 1.0.0-rc1
+- API `tarantoo.io/v1beta1`
 - Bump operator-sdk version (and other dependencies)
 - HELM charts is now placed in standalone repository https://github.com/tarantool/helm-charts
 - Update CRDs api version from `apiextensions.k8s.io/v1beta1` to `apiextensions.k8s.io/v1`

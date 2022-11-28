@@ -3,7 +3,7 @@ package implementation
 import (
 	"context"
 
-	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	"github.com/tarantool/tarantool-operator/apis/v1beta1"
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	"github.com/tarantool/tarantool-operator/pkg/k8s"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,7 +17,7 @@ type ResourcesManager struct {
 }
 
 func (r *ResourcesManager) GetCluster(ctx context.Context, ns, name string) (api.Cluster, error) {
-	cluster := &v1alpha2.Cluster{}
+	cluster := &v1beta1.Cluster{}
 	selector := types.NamespacedName{
 		Namespace: ns,
 		Name:      name,
@@ -34,7 +34,7 @@ func (r *ResourcesManager) GetCluster(ctx context.Context, ns, name string) (api
 func (r *ResourcesManager) GetClusterRoles(ctx context.Context, cluster api.Cluster) ([]api.Role, error) {
 	selector := r.LabelsManager.SelectorByClusterName(cluster)
 
-	roleList := &v1alpha2.RoleList{}
+	roleList := &v1beta1.RoleList{}
 
 	err := r.List(ctx, roleList, &client.ListOptions{LabelSelector: selector, Namespace: cluster.GetNamespace()})
 	if err != nil {

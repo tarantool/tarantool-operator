@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
-	"github.com/tarantool/tarantool-operator/apis/v1alpha2"
+	"github.com/tarantool/tarantool-operator/apis/v1beta1"
 	. "github.com/tarantool/tarantool-operator/controllers"
 	. "github.com/tarantool/tarantool-operator/internal"
 	. "github.com/tarantool/tarantool-operator/internal/implementation"
@@ -121,7 +121,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 
 			It("Must bootstrap cluster if all roles ready", func() {
 				cartridge.
-					WithAllRolesInPhase(v1alpha2.RoleWaitingForBootstrap).
+					WithAllRolesInPhase(v1beta1.RoleWaitingForBootstrap).
 					WithAllPodsReady()
 
 				fakeTopologyService.
