@@ -7,9 +7,7 @@ Where is no "kubernetes"-way to upgrade from ~0.0.* to ≥1.0.0-rc1.
 Although this guide provides comprehensive information about the upgrade process, 
 it will be useful for you to understand the basic concepts of [tarantool cartridge](https://github.com/tarantool/cartridge), [vshard](https://github.com/tarantool/vshard), [kubernetes](https://kubernetes.io/) and [helm](https://helm.sh/).
 
-All applications built on the tarantool cartridge are unique. 
-
-It is impossible to know the features of each of them.
+All applications built on the tarantool cartridge are unique. It is impossible to know the features of each of them.
 
 Do not try to blindly follow the instructions, think about your every step and may the Force be with you.
 
