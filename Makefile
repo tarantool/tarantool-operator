@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.11
+VERSION ?= 1.0.0-rc1
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -28,16 +28,29 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# tarantool.io/tarantool-operator-bundle:$VERSION and tarantool.io/tarantool-operator-catalog:$VERSION.
-IMAGE_TAG_BASE ?= tarantool.io/tarantool-operator
+# tarantool.io/tarantool-operator-ce-bundle:$VERSION and tarantool.io/tarantool-operator-ce-catalog:$VERSION.
+IMAGE_TAG_BASE ?= tarantool.io/tarantool-operator-ce
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
+# BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
+BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+
+# USE_IMAGE_DIGESTS defines if images are resolved via tags or digests
+# You can enable this value if you would like to use SHA Based Digests
+# To enable set flag to true
+USE_IMAGE_DIGESTS ?= false
+ifeq ($(USE_IMAGE_DIGESTS), true)
+	BUNDLE_GEN_FLAGS += --use-image-digests
+endif
+
 # Image URL to use all building/pushing image targets
-REPO ?= tarantool-operator
-IMG ?= $(REPO):$(VERSION)
+REPO ?= tarantool/tarantool-operator
+IMG ?= ${REPO}:${VERSION}
+# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
+ENVTEST_K8S_VERSION = 1.24.2
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -47,11 +60,11 @@ GOBIN=$(shell go env GOBIN)
 endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
-# This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+.PHONY: all
 all: build
 
 ##@ General
@@ -67,167 +80,115 @@ all: build
 # More info on the awk command:
 # http://linuxcommand.org/lc3_adv_awk.php
 
+.PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Development
 
+.PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." crd:generateEmbeddedObjectMeta=true output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." \
+		crd:generateEmbeddedObjectMeta=true,maxDescLen=0 \
+		output:crd:artifacts:config=config/crd/bases
 
+.PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+.PHONY: fmt
 fmt: ## Run go fmt against code.
 	go fmt ./...
 
+.PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
 
-gotest:
-	go test ./... -coverprofile cover.out ;
+lint: ## Lint the code
+	golangci-lint run -v --fix
 
-test: manifests generate fmt vet kind-start
-	echo "Run tests" ; \
-	$(MAKE) gotest KUBECONFIG=$(KIND_KUBECONFIG) || ($(MAKE) kind-stop || true; exit 1); \
- 	$(MAKE) kind-stop || true ;
-
-##@ KIND Cluster. More info: https://kind.sigs.k8s.io/docs
-KIND_VERSION ?= v0.12.0
-KIND_CLUSTER_NAME ?= "tarantool-operator-testing"
-KIND=$(shell pwd)/bin/kind
-KIND_IMAGE=kindest/node:v1.23.4@sha256:0e34f0d0fd448aa2f2819cfd74e99fe5793a6e4938b328f657c8e3f81ee0dfb9
-KIND_KUBECONFIG=$(shell pwd)/bin/kubeconfig.yml
-
-kind-install:
-	@[ -f $(KIND) ] || { \
-		OS=$(shell go env GOOS) ; \
-		ARCH=$(shell go env GOARCH) ; \
-		URL=https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-$${OS}-$${ARCH} ; \
-		echo "Downloading kind $${URL}" ; \
-		curl -sSLo ${KIND} $${URL} ; \
-		chmod +x $(KIND) ; \
-	}
-
-kind-start: kind-install
-	EXISTS=$$($(KIND) get clusters | grep -c $(KIND_CLUSTER_NAME)) ; \
-	if [ $$EXISTS -eq "0" ] ; then \
-  		$(KIND) create cluster --image=$(KIND_IMAGE) --name=$(KIND_CLUSTER_NAME) --kubeconfig=$(KIND_KUBECONFIG) || exit 1; \
-	fi; \
-	KUBECONFIG="$(KIND_KUBECONFIG)" kubectl cluster-info ; \
-	echo "Kind cluster ready" ;
-
-kind-stop: kind-install
-	$(KIND) delete cluster --name=$(KIND_CLUSTER_NAME) ; \
-	rm -f $(KIND_KUBECONFIG) ;
+.PHONY: test
+test: manifests generate fmt vet envtest ## Run tests.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
 ##@ Build
 
+.PHONY: build
 build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
+.PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
-docker-build: ## Build docker image with the manager.
+.PHONY: docker-build
+docker-build: test ## Build docker image with the manager.
 	docker build -t ${IMG} .
 
+.PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
-push-to-minikube: ## Add docker image with manager to minikube registry
-	minikube image load ${IMG}
-
-##@ Helm helpers
-
-CHARTS_DIR = $(shell pwd)/helm-charts
-
-CYELLOW=\033[1;33m
-CEND=\033[0m
-helm-warn:
-	@echo -e "$(CYELLOW)WARN$(CEND): After building, the manifests will be in:"
-	@echo -e "*~*~* $(CHARTS_DIR)/tarantool-operator/.templates.*/"
-	@echo -e "*~*~* but $(CYELLOW)this is not a helm template yet and they need to be migrated to templates.$(CEND)"
-	@echo
-
-helm-prepare-crds: manifests generate kustomize ## Build crds manifests for the helm chart using Kustomize.
-	@mkdir -p $(CHARTS_DIR)/tarantool-operator/crds/
-	$(KUSTOMIZE) build config/crd -o $(CHARTS_DIR)/tarantool-operator/crds/
-
-helm-prepare-manager: helm-warn manifests generate kustomize ## Build manager manifests for the helm chart using Kustomize.
-	@mkdir -p $(CHARTS_DIR)/tarantool-operator/.templates.manager/
-	$(KUSTOMIZE) build config/manager -o $(CHARTS_DIR)/tarantool-operator/.templates.manager/
-
-helm-prepare-rbac: helm-warn manifests generate kustomize ## Build rbac manifests for the helm chart using Kustomize.
-	@mkdir -p $(CHARTS_DIR)/tarantool-operator/.templates.rbac/
-	$(KUSTOMIZE) build config/rbac -o $(CHARTS_DIR)/tarantool-operator/.templates.rbac/
-
-helm-prepare-clear: ## Clear temp files builded using Kustomize.
-	rm -rf $(CHARTS_DIR)/tarantool-operator/.templates.*/
-
-helm-install-operator: ## Install tarantool-operator with tarantool-operator helm chart.
-	helm upgrade --install -n tarantool-operator operator $(CHARTS_DIR)/tarantool-operator \
-		         --create-namespace \
-		         --set image.repository=$(REPO) \
-		         --set image.tag=$(VERSION)
-
-helm-uninstall-operator: ## Uninstall tarantool-operator.
-	helm uninstall -n tarantool-operator operator
-
-helm-install-cartridge-app: ## Install cartridge-app with tarantool-cartridge helm chart.
-	helm upgrade --install -n tarantool-app cartridge-app $(CHARTS_DIR)/tarantool-cartridge \
-	             --create-namespace \
-	             --set LuaMemoryReserveMB=0 # default reserve too large for local minikube cluster
-
-helm-uninstall-cartridge-app: ## Uninstall cartridge-app.
-	helm uninstall -n tarantool-app cartridge-app
-
 ##@ Deployment
 
+ifndef ignore-not-found
+  ignore-not-found = false
+endif
+
+.PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+.PHONY: uninstall
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+.PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/default | kubectl delete -f -
+.PHONY: undeploy
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
+##@ Build Dependencies
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,v0.7.0)
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
 
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3,v3.10.0)
+## Tool Binaries
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+ENVTEST ?= $(LOCALBIN)/setup-envtest
 
-# go-get-tool will 'go get' any package $2 in version $3 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)@$(3)" ;\
-GO_VERSION=`go version | { read _ _ v _; echo $${v#go}; }` ; \
-GOBIN=$(PROJECT_DIR)/bin go get $(2)@$(3) ; \
-echo "Go version is $$GO_VERSION" ; \
-(printf '%s\n%s\n' "1.18" $$GO_VERSION  | sort --check=quiet --version-sort) && GOBIN=$(PROJECT_DIR)/bin go install $(2) ; \
-rm -rf $$TMP_DIR ;\
-}
-endef
+## Tool Versions
+KUSTOMIZE_VERSION ?= v3.8.7
+CONTROLLER_TOOLS_VERSION ?= v0.10.0
+
+KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(LOCALBIN)
+	test -s $(LOCALBIN)/kustomize || { curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle $(BUNDLE_GEN_FLAGS)
 	operator-sdk bundle validate ./bundle
 
 .PHONY: bundle-build
@@ -247,7 +208,7 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.15.1/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.23.0/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
@@ -278,3 +239,19 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+# Kustomize
+KUSTOMIZE_DIR = $(shell pwd)/.kustomize
+kustomize-warn:
+	@echo -e "$(CYELLOW)WARN$(CEND): After building, the manifests will be in:"
+	@echo -e "*~*~* $(KUSTOMIZE_DIR)"
+	@echo -e "*~*~* but $(CYELLOW)this is not a helm template yet and they need to be migrated to helm-charts.$(CEND)"
+	@echo
+
+kustomize-crds: kustomize-warn manifests generate kustomize ## Build rbac manifests for the helm chart using Kustomize.
+	@mkdir -p $(KUSTOMIZE_DIR)/crds/
+	$(KUSTOMIZE) build config/crd -o $(KUSTOMIZE_DIR)/crds/
+
+kustomize-rbac: kustomize-warn manifests generate kustomize ## Build rbac manifests for the helm chart using Kustomize.
+	@mkdir -p $(KUSTOMIZE_DIR)/rbac/
+	$(KUSTOMIZE) build config/rbac -o $(KUSTOMIZE_DIR)/rbac/

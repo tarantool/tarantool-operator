@@ -4,6 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   name: roles.tarantool.io
 spec:
+  preserveUnknownFields: true
   conversion:
     strategy: Webhook
     webhook:

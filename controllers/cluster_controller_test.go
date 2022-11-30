@@ -1,211 +1,286 @@
-package controllers
+package controllers_test
 
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	helpers "github.com/tarantool/tarantool-operator/test/helpers"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/stretchr/testify/mock"
+	"github.com/tarantool/tarantool-operator/apis/v1beta1"
+	. "github.com/tarantool/tarantool-operator/controllers"
+	. "github.com/tarantool/tarantool-operator/internal"
+	. "github.com/tarantool/tarantool-operator/internal/implementation"
+	"github.com/tarantool/tarantool-operator/pkg/election"
+	"github.com/tarantool/tarantool-operator/pkg/events"
+	"github.com/tarantool/tarantool-operator/pkg/k8s"
+	"github.com/tarantool/tarantool-operator/pkg/reconciliation"
+	"github.com/tarantool/tarantool-operator/pkg/topology"
+	"github.com/tarantool/tarantool-operator/test/mocks"
+	"github.com/tarantool/tarantool-operator/test/resources"
+	"github.com/tarantool/tarantool-operator/test/utils"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
-
-func RandStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
-}
 
 var _ = Describe("cluster_controller unit testing", func() {
 	var (
-		ctx         = context.TODO()
-		namespace   = "test"
-		clusterName = "test"
-		clusterId   = "test"
-		ns          = &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: namespace,
-			},
-		}
-		cartridge = helpers.NewCartridge(helpers.CartridgeParams{
-			Namespace:   namespace,
-			ClusterName: clusterName,
-			ClusterID:   clusterId,
-		})
+		ctx         = context.Background()
+		namespace   = "default"
+		clusterName string
 	)
 
-	Describe("cluster_controller manage cluster resources", func() {
-		BeforeEach(func() {
-			Expect(k8sClient.Create(ctx, ns)).
-				NotTo(
-					HaveOccurred(),
-					fmt.Sprintf("failed to create Namespace %s", ns.GetName()),
-				)
+	BeforeEach(func() {
+		clusterName = fmt.Sprintf("cluster-%s", utils.RandStringRunes(4))
+	})
 
-			Expect(k8sClient.Create(ctx, cartridge.Cluster)).
-				NotTo(
-					HaveOccurred(),
-					fmt.Sprintf("failed to create Cluster %s", cartridge.Cluster.GetName()),
-				)
+	Context("Common logic", func() {
+		Describe("cluster controller should reconcile deletion", func() {
+			It("must accept and process request with cluster which does not exists", func() {
+				fakeClient := fake.NewClientBuilder().Build()
+				fakeTopologyService := new(mocks.FakeCartridgeTopology)
 
-			for _, role := range cartridge.Roles {
-				Expect(k8sClient.Create(ctx, role)).
-					NotTo(
-						HaveOccurred(),
-						fmt.Sprintf("failed to create Role %s", role.GetName()),
-					)
-			}
+				labelsManager := &k8s.NamespacedLabelsManager{
+					Namespace: "tarantool.io",
+				}
 
-			for _, rs := range cartridge.ReplicasetTemplates {
-				Expect(k8sClient.Create(ctx, rs)).
-					NotTo(
-						HaveOccurred(),
-						fmt.Sprintf("failed to create ReplicasetTemplate %s", rs.GetName()),
-					)
-			}
-
-			for _, svc := range cartridge.Services {
-				Expect(k8sClient.Create(ctx, svc)).
-					NotTo(
-						HaveOccurred(),
-						fmt.Sprintf("failed to create Service %s", svc.GetName()),
-					)
-			}
-		})
-
-		AfterEach(func() {
-			By("remove Namespace object " + namespace)
-			ns := &corev1.Namespace{}
-			Expect(
-				k8sClient.Get(ctx, client.ObjectKey{Name: namespace}, ns),
-			).NotTo(HaveOccurred(), "failed to get Namespace")
-
-			Expect(k8sClient.Delete(ctx, ns)).NotTo(HaveOccurred(), "failed to delete Namespace")
-		})
-
-		Context("manage cluster leader: tarantool instance accepting admin requests", func() {
-			It("change the leader if the previous one does not exist", func() {
-				By("get the chosen leader")
-				ep := corev1.Endpoints{}
-				Eventually(
-					func() bool {
-						err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterName, Namespace: namespace}, &ep)
-						if err != nil {
-							return false
-						}
-
-						if ep.GetAnnotations()["tarantool.io/leader"] != "" {
-							return true
-						}
-
-						return false
+				resourcesManager := &ResourcesManager{
+					LabelsManager: labelsManager,
+					CommonResourcesManager: &k8s.CommonResourcesManager{
+						Client: fakeClient,
+						Scheme: scheme.Scheme,
 					},
-					2*time.Minute,
-					500*time.Millisecond,
-				).Should(BeTrue())
+				}
 
-				By("save old leader")
-				oldLeader := ep.GetAnnotations()["tarantool.io/leader"]
+				eventsRecorder := events.NewRecorder(record.NewFakeRecorder(10))
 
-				By("set all new IP addresses")
-				ep.Subsets = []corev1.EndpointSubset{
-					{
-						Addresses: []corev1.EndpointAddress{
-							{IP: "4.4.4.4"},
-							{IP: "5.5.5.5"},
-							{IP: "6.6.6.6"},
+				clusterReconciler := &ClusterReconciler{
+					LabelsManager: labelsManager,
+					SteppedReconciler: &reconciliation.SteppedReconciler[*ClusterContextCE, *ClusterControllerCE]{
+						Client: fakeClient,
+						Controller: &ClusterControllerCE{
+							CommonClusterController: &reconciliation.CommonClusterController{
+								CommonController: &reconciliation.CommonController{
+									Client: fakeClient,
+									Schema: scheme.Scheme,
+									LeaderElection: &election.LeaderElection{
+										Client:           fakeClient,
+										Recorder:         eventsRecorder,
+										ResourcesManager: resourcesManager,
+									},
+									ResourcesManager: resourcesManager,
+									LabelsManager:    labelsManager,
+									EventsRecorder:   eventsRecorder,
+									Topology:         fakeTopologyService,
+								},
+							},
 						},
 					},
 				}
-				Expect(k8sClient.Update(ctx, &ep)).NotTo(HaveOccurred(), "failed to update cluster endpoints")
 
-				By("check that the leader has changed")
-				Eventually(
-					func() bool {
-						err := k8sClient.Get(ctx, client.ObjectKey{Name: clusterId, Namespace: namespace}, &ep)
-						if err != nil {
-							return false
-						}
+				reconcile, err := clusterReconciler.Reconcile(ctx, utils.ReconcileRequest(namespace, clusterName))
+				if err != nil {
+					return
+				}
 
-						if ep.GetAnnotations()["tarantool.io/leader"] != oldLeader {
-							return true
-						}
-						return false
-					},
-					2*time.Minute,
-					500*time.Millisecond,
-				).Should(BeTrue())
+				Expect(err).NotTo(HaveOccurred(), "an error during reconcile")
+				Expect(reconcile.Requeue).To(BeFalse(), "should not be re-queued")
+				Expect(reconcile.RequeueAfter).To(BeZero(), "should not be re-queued")
 			})
 		})
 	})
 
-	Describe("cluster_controller unit testing functions", func() {
-		Describe("function IsLeaderExists must check for existence of leader in annotation of cluster Endpoints", func() {
-			Context("positive cases (leader exist)", func() {
-				It("should return True if leader assigned and exist", func() {
-					leaderIP := "1.1.1.1"
+	Context("cluster bootstrapping", func() {
+		Describe("cluster should control vshard bootstrapping", func() {
+			var cartridge *resources.FakeCartridge
+			var fakeTopologyService *mocks.FakeCartridgeTopology
+			labelsManager := &k8s.NamespacedLabelsManager{
+				Namespace: "tarantool.io",
+			}
 
-					ep := &corev1.Endpoints{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "name",
-							Namespace: "namespace",
-							Annotations: map[string]string{
-								"tarantool.io/leader": fmt.Sprintf("%s:8081", leaderIP),
-							},
-						},
-						Subsets: []corev1.EndpointSubset{
-							{
-								Addresses: []corev1.EndpointAddress{
-									{IP: leaderIP},
-								},
-							},
-						},
-					}
-					Expect(IsLeaderExists(ep)).To(BeTrue())
-				})
+			BeforeEach(func() {
+				cartridge = resources.NewFakeCartridge(labelsManager).
+					WithNamespace(namespace).
+					WithClusterName(clusterName).
+					WithRouterRole(2, 1).
+					WithStorageRole(2, 3).
+					WithRouterStatefulSetsCreated().
+					WithStorageStatefulSetsCreated().
+					WithRouterPodsCreated().
+					WithStoragePodsCreated()
+
+				fakeTopologyService = new(mocks.FakeCartridgeTopology)
+
+				fakeTopologyService.
+					On("BootstrapVshard", mock.Anything).
+					Return(nil)
 			})
 
-			Context("negative cases (leader does not exist)", func() {
-				It("should return False if leader not assigned", func() {
-					ep := &corev1.Endpoints{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "name",
-							Namespace: "namespace",
-						},
-					}
-					Expect(IsLeaderExists(ep)).To(BeFalse())
-				})
+			It("Must bootstrap cluster if all roles ready", func() {
+				cartridge.
+					WithAllRolesInPhase(v1beta1.RoleWaitingForBootstrap).
+					WithAllPodsReady()
 
-				It("should return False if leader assigned, but IP not exists", func() {
-					ep := &corev1.Endpoints{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "name",
-							Namespace: "namespace",
-							Annotations: map[string]string{
-								"tarantool.io/leader": "6.6.6.6:8081",
-							},
-						},
-						Subsets: []corev1.EndpointSubset{
-							{
-								Addresses: []corev1.EndpointAddress{
-									{IP: "0.0.0.0"},
+				fakeTopologyService.
+					On("BootstrapVshard", mock.Anything, mock.Anything).
+					Return(nil).
+					Once()
+
+				fakeClient := cartridge.BuildFakeClient()
+
+				resourcesManager := &ResourcesManager{
+					LabelsManager: labelsManager,
+					CommonResourcesManager: &k8s.CommonResourcesManager{
+						Client: fakeClient,
+						Scheme: scheme.Scheme,
+					},
+				}
+
+				fakeTopologyService.
+					On("GetFailoverParams", mock.Anything, mock.Anything).
+					Return(&topology.FailoverParams{}, nil)
+
+				eventsRecorder := events.NewRecorder(record.NewFakeRecorder(10))
+
+				clusterReconciler := &ClusterReconciler{
+					LabelsManager: labelsManager,
+					SteppedReconciler: &reconciliation.SteppedReconciler[*ClusterContextCE, *ClusterControllerCE]{
+						Client: fakeClient,
+						Controller: &ClusterControllerCE{
+							CommonClusterController: &reconciliation.CommonClusterController{
+								CommonController: &reconciliation.CommonController{
+									Client: fakeClient,
+									Schema: scheme.Scheme,
+									LeaderElection: &election.LeaderElection{
+										Client:           fakeClient,
+										Recorder:         eventsRecorder,
+										ResourcesManager: resourcesManager,
+									},
+									ResourcesManager: resourcesManager,
+									LabelsManager:    labelsManager,
+									EventsRecorder:   eventsRecorder,
+									Topology:         fakeTopologyService,
 								},
 							},
 						},
-					}
-					Expect(IsLeaderExists(ep)).To(BeFalse())
+					},
+				}
+				_, err := clusterReconciler.Reconcile(ctx, ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: namespace,
+						Name:      clusterName,
+					},
 				})
+				Expect(err).NotTo(HaveOccurred(), "an error during reconcile")
+
+				err = fakeClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: clusterName}, cartridge.Cluster)
+				Expect(err).NotTo(HaveOccurred(), "cluster gone")
+
+				Expect(cartridge.Cluster.Status.Bootstrapped).To(BeTrue(), "cluster not bootstrapped")
+			})
+
+			It("Must NOT bootstrap cluster if NOT all roles ready", func() {
+				fakeClient := cartridge.BuildFakeClient()
+
+				resourcesManager := &ResourcesManager{
+					LabelsManager: labelsManager,
+					CommonResourcesManager: &k8s.CommonResourcesManager{
+						Client: fakeClient,
+						Scheme: scheme.Scheme,
+					},
+				}
+
+				eventsRecorder := events.NewRecorder(record.NewFakeRecorder(10))
+
+				clusterReconciler := &ClusterReconciler{
+					LabelsManager: labelsManager,
+					SteppedReconciler: &reconciliation.SteppedReconciler[*ClusterContextCE, *ClusterControllerCE]{
+						Client: fakeClient,
+						Controller: &ClusterControllerCE{
+							CommonClusterController: &reconciliation.CommonClusterController{
+								CommonController: &reconciliation.CommonController{
+									Client: fakeClient,
+									Schema: scheme.Scheme,
+									LeaderElection: &election.LeaderElection{
+										Client:           fakeClient,
+										Recorder:         eventsRecorder,
+										ResourcesManager: resourcesManager,
+									},
+									ResourcesManager: resourcesManager,
+									LabelsManager:    labelsManager,
+									EventsRecorder:   eventsRecorder,
+									Topology:         fakeTopologyService,
+								},
+							},
+						},
+					},
+				}
+
+				_, err := clusterReconciler.Reconcile(ctx, ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: namespace,
+						Name:      clusterName,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred(), "an error during reconcile")
+
+				err = fakeClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: clusterName}, cartridge.Cluster)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(cartridge.Cluster.Status.Bootstrapped).To(BeFalse(), "cluster unexpectedly bootstrapped")
+			})
+
+			It("Must NOT bootstrap cluster if it is already bootstrapped", func() {
+				cartridge.Bootstrapped()
+				fakeClient := cartridge.BuildFakeClient()
+
+				resourcesManager := &ResourcesManager{
+					LabelsManager: labelsManager,
+					CommonResourcesManager: &k8s.CommonResourcesManager{
+						Client: fakeClient,
+						Scheme: scheme.Scheme,
+					},
+				}
+
+				eventsRecorder := events.NewRecorder(record.NewFakeRecorder(10))
+
+				clusterReconciler := &ClusterReconciler{
+					LabelsManager: labelsManager,
+					SteppedReconciler: &reconciliation.SteppedReconciler[*ClusterContextCE, *ClusterControllerCE]{
+						Client: fakeClient,
+						Controller: &ClusterControllerCE{
+							CommonClusterController: &reconciliation.CommonClusterController{
+								CommonController: &reconciliation.CommonController{
+									Client: fakeClient,
+									Schema: scheme.Scheme,
+									LeaderElection: &election.LeaderElection{
+										Client:           fakeClient,
+										Recorder:         eventsRecorder,
+										ResourcesManager: resourcesManager,
+									},
+									ResourcesManager: resourcesManager,
+									LabelsManager:    labelsManager,
+									EventsRecorder:   eventsRecorder,
+									Topology:         fakeTopologyService,
+								},
+							},
+						},
+					},
+				}
+
+				_, err := clusterReconciler.Reconcile(ctx, ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: namespace,
+						Name:      clusterName,
+					},
+				})
+				Expect(err).NotTo(HaveOccurred(), "an error during reconcile")
+
+				err = fakeClient.Get(ctx, types.NamespacedName{Namespace: namespace, Name: clusterName}, cartridge.Cluster)
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 	})

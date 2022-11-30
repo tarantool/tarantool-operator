@@ -1,4 +1,3 @@
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -21,6 +20,30 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - persistentvolumeclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - persistentvolumes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - create
@@ -29,6 +52,34 @@ rules:
   - list
   - patch
   - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/exec
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/logs
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
   - watch
 - apiGroups:
   - ""
@@ -55,6 +106,56 @@ rules:
   - update
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tarantool.io
+  resources:
+  - cartridgeconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tarantool.io
+  resources:
+  - cartridgeconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - tarantool.io
+  resources:
+  - cartridgeconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - tarantool.io
   resources:
   - clusters
@@ -69,39 +170,7 @@ rules:
 - apiGroups:
   - tarantool.io
   resources:
-  - clusters/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - tarantool.io
-  resources:
   - clusters/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - tarantool.io
-  resources:
-  - replicasettemplates
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - tarantool.io
-  resources:
-  - replicasettemplates/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - tarantool.io
-  resources:
-  - replicasettemplates/status
   verbs:
   - get
   - patch
@@ -118,12 +187,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - tarantool.io
-  resources:
-  - roles/finalizers
-  verbs:
-  - update
 - apiGroups:
   - tarantool.io
   resources:

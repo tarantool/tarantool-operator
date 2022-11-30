@@ -1,0 +1,24 @@
+# permissions for end users to edit cartridgeconfigs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cartridgeconfig-editor-role
+rules:
+- apiGroups:
+  - tarantool.io
+  resources:
+  - cartridgeconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - tarantool.io
+  resources:
+  - cartridgeconfigs/status
+  verbs:
+  - get

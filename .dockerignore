@@ -3,3 +3,14 @@
 .git/
 bin/
 testbin/
+.idea/
+.kustomize/
+.github/
+hack/
+doc/
+assets/
+examples/
+helm-charts/
+sidecar/
+test/
+config/

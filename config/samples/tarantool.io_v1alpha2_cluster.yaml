@@ -1,0 +1,6 @@
+apiVersion: tarantool.io/v1beta1
+kind: Cluster
+metadata:
+  name: cluster-sample
+spec:
+  # TODO(user): Add fields here
