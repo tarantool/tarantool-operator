@@ -1,6 +1,8 @@
 package cluster
 
 import (
+	"time"
+
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	. "github.com/tarantool/tarantool-operator/pkg/reconciliation"
 )
@@ -30,5 +32,5 @@ func (r *WaitForRolesPhaseStep[RolePhaseType, ClusterType, CtxType, CtrlType]) R
 		}
 	}
 
-	return Complete()
+	return Requeue(10 * time.Second)
 }
