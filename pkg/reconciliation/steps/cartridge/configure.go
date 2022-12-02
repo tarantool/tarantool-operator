@@ -1,9 +1,9 @@
 package cartridge
 
 import (
-	"github.com/google/go-cmp/cmp"
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	. "github.com/tarantool/tarantool-operator/pkg/reconciliation"
+	"github.com/tarantool/tarantool-operator/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,10 +26,10 @@ func (r *ConfigureStep[ConfigType, CtxType, CtrlType]) Reconcile(ctx CtxType, ct
 		return Error(err)
 	}
 
-	if cmp.Equal(actualConfig, desiredConfig) {
-		ctx.GetLogger().Info("Configs are equals do not upload")
+	if utils.IsMapSubset(actualConfig, desiredConfig) {
+		ctx.GetLogger().Info("Nothing to change in config")
 
-		return Error(err)
+		return Complete()
 	}
 
 	err = ctrl.GetTopology().ApplyCartridgeConfig(ctx, ctx.GetLeader(), desiredConfig)

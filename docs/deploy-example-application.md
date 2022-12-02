@@ -1,5 +1,10 @@
 # Deploy example application
 
+## Table of Contents
+
+- [Install or update application using Helm](#install-or-update-application-using-helm)
+- [Work with cartridge config](#work-with-cartridge-config)
+
 This guide provides the instructions how to install the example cartridge application.
 To deploy your own application you'd need to build your own docker image
 via [Cartridge CLI](https://www.tarantool.io/en/doc/latest/book/cartridge/cartridge_cli/commands/pack/docker/).
@@ -26,6 +31,11 @@ To install or upgrade the Cartridge App using Helm, run following commands from 
     ```shell
     helm upgrade --install tarantool-app tarantool/cartridge --values ./values.yaml -n my-namespace [--create-namespace]
     ```
+
+### Work with cartridge config
+
+- To pass cartridge cluster config fill the `tarantool.config` section in your `values.yaml` file with any valid yaml object.
+- If you need to remove some properties from config you should do it explicit by setting it to `null` value.
 
 ### Useful helm variables
 

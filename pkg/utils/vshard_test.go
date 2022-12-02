@@ -7,7 +7,7 @@ import (
 	"github.com/tarantool/tarantool-operator/pkg/utils"
 )
 
-var _ = Describe("role utils unit testing", func() {
+var _ = Describe("vshard utils unit testing", func() {
 	Describe(`IsVShardRolesEquals function must compare two arrays of roles for equality, respecting the hierarchy and regardless of the order of the elements`,
 		func() {
 			Context("positive cases (equal arrays)", func() {

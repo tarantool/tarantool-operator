@@ -371,16 +371,14 @@ func (r *CommonCartridgeTopology) ApplyCartridgeConfig(ctx context.Context, lead
 	}
 
 	local desiredConfig = ...
-	local actualConfig = cartridge.config_get_readonly()
-	for key, _ in pairs(actualConfig) do
+	local safeConfig = {}
+	for key, value in pairs(desiredConfig) do
 		if not blacklist[key] then
-			if desiredConfig[key] == nil then
-				desiredConfig[key] = box.NULL
-			end
+			safeConfig[key] = value
 		end
 	end
 
-	return cartridge.config_patch_clusterwide(desiredConfig)
+	return cartridge.config_patch_clusterwide(safeConfig)
 `
 
 	var res bool
