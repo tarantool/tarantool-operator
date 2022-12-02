@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ func (*TarantoolCTL) CreateCommand(lua string, args ...any) (*Command, error) {
 
 	tpl := `
 		local json = require('json')
-		local args = json.decode('%s')
+		local args = json.decode(%s)
 		local func = function(...)
         	%s
 		end
@@ -38,9 +39,10 @@ func (*TarantoolCTL) CreateCommand(lua string, args ...any) (*Command, error) {
 			return nil, err
 		}
 
-		safeLua = fmt.Sprintf(tpl, jsonArgs, lua)
+		quoted := strconv.Quote(string(jsonArgs))
+		safeLua = fmt.Sprintf(tpl, quoted, lua)
 	} else {
-		safeLua = fmt.Sprintf(tpl, "{}", lua)
+		safeLua = fmt.Sprintf(tpl, "'{}'", lua)
 	}
 
 	safeLua = strings.ReplaceAll(safeLua, "\t", "")
