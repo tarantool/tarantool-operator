@@ -172,8 +172,8 @@ func (in *FailoverStateboard) GetPassword() api.SecretKeyReference {
 	return &in.Password
 }
 
-// SecretKeyReference represents a reference to filed in Secret. It has enough information to retrieve a value secret in any namespace
-// +structType=atomic.
+// SecretKeyReference represents a reference to filed in Secret. It has enough information to retrieve a value secret in any namespace.
+// +structType=atomic
 type SecretKeyReference struct {
 	// Namespace defines the space within which the secret name must be unique.
 	// +optional

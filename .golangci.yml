@@ -46,6 +46,7 @@ linters:
     - tagliatelle
     - varnamelen
     - nilnil
+    - godot
 
 issues:
   exclude-rules:
