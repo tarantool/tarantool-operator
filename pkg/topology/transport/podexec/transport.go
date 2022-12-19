@@ -42,10 +42,8 @@ func (r *PodExec) Exec(ctx context.Context, pod *v1.Pod, res interface{}, lua st
 	return r.CLI.Unmarshal(stdout, &res)
 }
 
-// execShellCommand
-// TODO: use context here see: https://github.com/kubernetes/kubernetes/pull/107605
 func (r *PodExec) execShellCommand(
-	_ context.Context,
+	ctx context.Context,
 	command *cli.Command,
 	podName string,
 	podNamespace string,
@@ -85,14 +83,14 @@ func (r *PodExec) execShellCommand(
 
 	if stdinExist {
 		stdin := bytes.NewBufferString(command.StdIn)
-		err = exec.Stream(remotecommand.StreamOptions{
+		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 			Stdout: stdout,
 			Stdin:  stdin,
 			Stderr: nil,
 			Tty:    false,
 		})
 	} else {
-		err = exec.Stream(remotecommand.StreamOptions{
+		err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 			Stdout: stdout,
 			Stdin:  nil,
 			Stderr: nil,

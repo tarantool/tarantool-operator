@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Add ability to specify key in failover password secret
 - Improve leader election logic
 - Add ability to change UpdateStrategy for StatefulSets
+- Add ability to change UpdateStrategy for StatefulSets
+- Optimize lua transport encoding
 
 ## [1.0.0-rc1]
 
