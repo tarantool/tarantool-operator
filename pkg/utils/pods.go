@@ -10,18 +10,6 @@ func IsPodRunning(pod *v1.Pod) bool {
 	return pod.Status.Phase == v1.PodRunning
 }
 
-func IsPodDefaultContainerReady(pod *v1.Pod) bool {
-	if !IsPodRunning(pod) {
-		return false
-	}
-
-	if pod.Status.ContainerStatuses == nil || len(pod.Status.ContainerStatuses) == 0 {
-		return false
-	}
-
-	return pod.Status.ContainerStatuses[0].Ready
-}
-
 // IsPodReady returns true if a pod is ready; false otherwise.
 func IsPodReady(pod *v1.Pod) bool {
 	return IsPodReadyConditionTrue(pod.Status)

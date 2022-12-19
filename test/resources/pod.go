@@ -54,16 +54,6 @@ func (r *FakeCartridge) WithStoragePodsCreated() *FakeCartridge {
 func (r *FakeCartridge) WithAllPodsRunning() *FakeCartridge {
 	for _, pod := range r.Pods {
 		r.setPodRunning(pod)
-		r.setPodContainerReady(pod, PodContainerName)
-	}
-
-	return r
-}
-
-func (r *FakeCartridge) WithAllPodsReady() *FakeCartridge {
-	for _, pod := range r.Pods {
-		r.setPodReady(pod)
-		r.setPodContainerReady(pod, PodContainerName)
 	}
 
 	return r
@@ -79,25 +69,6 @@ func (r *FakeCartridge) WithPodsRunning(names ...string) *FakeCartridge {
 		_, ok := namesMap[pod.GetName()]
 		if ok {
 			r.setPodRunning(pod)
-			r.setPodContainerReady(pod, PodContainerName)
-		}
-	}
-
-	return r
-}
-
-func (r *FakeCartridge) WithPodsReady(names ...string) *FakeCartridge {
-	namesMap := make(map[string]bool, len(names))
-	for _, name := range names {
-		namesMap[name] = true
-	}
-
-	for _, pod := range r.Pods {
-		_, ok := namesMap[pod.GetName()]
-		if ok {
-			r.setPodRunning(pod)
-			r.setPodReady(pod)
-			r.setPodContainerReady(pod, PodContainerName)
 		}
 	}
 
@@ -107,7 +78,6 @@ func (r *FakeCartridge) WithPodsReady(names ...string) *FakeCartridge {
 func (r *FakeCartridge) WithAllPodsDeleting() *FakeCartridge {
 	for _, pod := range r.Pods {
 		r.setPodDeleting(pod)
-		r.setPodContainerReady(pod, PodContainerName)
 	}
 
 	return r
@@ -117,38 +87,7 @@ func (r *FakeCartridge) setPodRunning(pod *v1.Pod) {
 	pod.Status.Phase = v1.PodRunning
 }
 
-func (r *FakeCartridge) setPodReady(pod *v1.Pod) {
-	if pod.Status.Conditions == nil {
-		pod.Status.Conditions = []v1.PodCondition{}
-	}
-
-	pod.Status.Conditions = append(pod.Status.Conditions, v1.PodCondition{
-		Type:    v1.PodReady,
-		Status:  v1.ConditionTrue,
-		Reason:  "Ready",
-		Message: "Ready",
-	})
-}
-
 func (r *FakeCartridge) setPodDeleting(pod *v1.Pod) {
 	now := metav1.Now()
 	pod.DeletionTimestamp = &now
-}
-
-//nolint:unparam
-func (r *FakeCartridge) setPodContainerReady(pod *v1.Pod, containerName string) {
-	if pod.Status.ContainerStatuses == nil {
-		pod.Status.ContainerStatuses = []v1.ContainerStatus{}
-	}
-
-	started := true
-
-	pod.Status.ContainerStatuses = append(
-		pod.Status.ContainerStatuses,
-		v1.ContainerStatus{
-			Name:    containerName,
-			Ready:   true,
-			Started: &started,
-		},
-	)
 }
