@@ -89,6 +89,7 @@ func NewClusterReconciler(mgr Manager) *ClusterReconciler {
 							Client:           k8sClient,
 							Recorder:         eventsRecorder,
 							ResourcesManager: resourcesManager,
+							Topology:         luaTopology,
 						},
 						ResourcesManager: resourcesManager,
 						EventsRecorder:   eventsRecorder,
@@ -144,6 +145,7 @@ func (r *ClusterReconciler) SetupWithManager(mgr Manager) error {
 	return NewControllerManagedBy(mgr).
 		For(&Cluster{}).
 		Owns(&v1.Service{}).
+		Watches(&source.Kind{Type: &v1.Secret{}}, &handler.EnqueueRequestForOwner{OwnerType: &Cluster{}, IsController: false}).
 		Watches(&source.Kind{Type: &Role{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
 			role, ok := obj.(*Role)
 			if !ok {

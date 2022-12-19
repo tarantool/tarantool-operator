@@ -7,6 +7,7 @@ import (
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	"github.com/tarantool/tarantool-operator/pkg/events"
 	"github.com/tarantool/tarantool-operator/pkg/k8s"
+	"github.com/tarantool/tarantool-operator/pkg/topology"
 	"github.com/tarantool/tarantool-operator/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,6 +18,8 @@ type LeaderElection struct {
 	client.Client
 	k8s.ResourcesManager
 	*events.Recorder
+
+	Topology topology.CartridgeTopology
 }
 
 var (
@@ -27,11 +30,28 @@ var (
 )
 
 // GetLeaderInstance return first pod of first replicaset of first role.
+// Its implements the following logic
+// 1. Retrieve previously elected leader
+// 1.1 When leader where is no previously elected leader, elects a new one
+// 1.2 When previously elected leader is not available
+// 1.2.1 and cluster was already bootstrapped, try to find new one instance
+// 1.2.2 and cluster was NOT bootstrapped - it fails, because we can't safely change leader in this case,
+//
+//	previously elected leader may have some important config and topology data, which can be absent on new leader,
+//	some empty instance may be elected in that case it will produce a split brain.
 func (r *LeaderElection) GetLeaderInstance(ctx context.Context, cluster api.Cluster) (*v1.Pod, error) {
 	leader, err := r.loadLeaderInstance(ctx, cluster)
 	if err != nil {
-		if errors.Is(err, ErrLeaderWasNotElected) || errors.Is(err, ErrLeaderNotReady) {
+		if errors.Is(err, ErrLeaderWasNotElected) {
 			return r.ElectLeaderInstance(ctx, cluster)
+		}
+
+		if errors.Is(err, ErrLeaderNotReady) {
+			if cluster.IsBootstrapped() {
+				return r.ElectLeaderInstance(ctx, cluster)
+			}
+
+			return nil, err
 		}
 	}
 
@@ -70,7 +90,12 @@ func (r *LeaderElection) loadLeaderInstance(ctx context.Context, cluster api.Clu
 		return nil, err
 	}
 
-	if !r.CanBeLeader(cluster, leader) {
+	canBeLeader, err := r.CanBeLeader(ctx, cluster, leader)
+	if err != nil {
+		return nil, err
+	}
+
+	if !canBeLeader {
 		return nil, ErrLeaderNotReady
 	}
 
@@ -110,9 +135,10 @@ func (r *LeaderElection) findNewLeaderInstance(ctx context.Context, cluster api.
 	}
 
 	var (
-		stsName string
-		podName string
-		pod     *v1.Pod
+		stsName     string
+		podName     string
+		canBeLeader bool
+		pod         *v1.Pod
 	)
 
 	for podOrdinal := int32(0); podOrdinal < maxReplicas; podOrdinal++ {
@@ -145,7 +171,12 @@ func (r *LeaderElection) findNewLeaderInstance(ctx context.Context, cluster api.
 					return nil, err
 				}
 
-				if r.CanBeLeader(cluster, pod) {
+				canBeLeader, err = r.CanBeLeader(ctx, cluster, pod)
+				if err != nil {
+					return nil, err
+				}
+
+				if canBeLeader {
 					return pod, nil
 				}
 			}
@@ -155,20 +186,30 @@ func (r *LeaderElection) findNewLeaderInstance(ctx context.Context, cluster api.
 	return nil, ErrNoAvailableLeader
 }
 
-func (r *LeaderElection) CanBeLeader(cluster api.Cluster, pod *v1.Pod) bool {
-	if pod.GetDeletionTimestamp() != nil {
-		return false
+func (r *LeaderElection) CanBeLeader(ctx context.Context, cluster api.Cluster, pod *v1.Pod) (bool, error) {
+	if utils.IsPodDeleting(pod) {
+		return false, nil
 	}
 
 	if !utils.IsPodRunning(pod) {
-		return false
+		return false, nil
 	}
 
 	if !cluster.IsBootstrapped() {
-		return utils.IsPodDefaultContainerReady(pod)
+		started, err := r.Topology.IsCartridgeStarted(ctx, pod)
+		if err != nil {
+			return false, err
+		}
+
+		return started, nil
 	}
 
-	return utils.IsPodReady(pod)
+	configured, err := r.Topology.IsCartridgeConfigured(ctx, pod)
+	if err != nil {
+		return false, err
+	}
+
+	return configured, nil
 }
 
 func (r *LeaderElection) IsLeader(cluster api.Cluster, pod *v1.Pod) bool {

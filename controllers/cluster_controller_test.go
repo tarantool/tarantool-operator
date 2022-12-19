@@ -70,6 +70,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 										Client:           fakeClient,
 										Recorder:         eventsRecorder,
 										ResourcesManager: resourcesManager,
+										Topology:         fakeTopologyService,
 									},
 									ResourcesManager: resourcesManager,
 									LabelsManager:    labelsManager,
@@ -122,12 +123,16 @@ var _ = Describe("cluster_controller unit testing", func() {
 			It("Must bootstrap cluster if all roles ready", func() {
 				cartridge.
 					WithAllRolesInPhase(v1beta1.RoleWaitingForBootstrap).
-					WithAllPodsReady()
+					WithAllPodsRunning()
 
 				fakeTopologyService.
 					On("BootstrapVshard", mock.Anything, mock.Anything).
 					Return(nil).
 					Once()
+
+				fakeTopologyService.
+					On("IsCartridgeStarted", mock.Anything, mock.Anything).
+					Return(true, nil)
 
 				fakeClient := cartridge.BuildFakeClient()
 
@@ -158,6 +163,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 										Client:           fakeClient,
 										Recorder:         eventsRecorder,
 										ResourcesManager: resourcesManager,
+										Topology:         fakeTopologyService,
 									},
 									ResourcesManager: resourcesManager,
 									LabelsManager:    labelsManager,
@@ -208,6 +214,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 										Client:           fakeClient,
 										Recorder:         eventsRecorder,
 										ResourcesManager: resourcesManager,
+										Topology:         fakeTopologyService,
 									},
 									ResourcesManager: resourcesManager,
 									LabelsManager:    labelsManager,
@@ -260,6 +267,7 @@ var _ = Describe("cluster_controller unit testing", func() {
 										Client:           fakeClient,
 										Recorder:         eventsRecorder,
 										ResourcesManager: resourcesManager,
+										Topology:         fakeTopologyService,
 									},
 									ResourcesManager: resourcesManager,
 									LabelsManager:    labelsManager,

@@ -58,10 +58,13 @@ func (r *FakeCartridge) WithNamespace(namespace string) *FakeCartridge {
 	return r
 }
 
-func (r *FakeCartridge) BuildFakeClient() client.WithWatch {
+func (r *FakeCartridge) NewFakeClientBuilder() *fake.ClientBuilder {
 	fakeClientBuilder := fake.NewClientBuilder()
 
 	return fakeClientBuilder.
-		WithObjects(r.objects...).
-		Build()
+		WithObjects(r.objects...)
+}
+
+func (r *FakeCartridge) BuildFakeClient() client.WithWatch {
+	return r.NewFakeClientBuilder().Build()
 }

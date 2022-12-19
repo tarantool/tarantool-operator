@@ -1,7 +1,5 @@
 package api
 
-import v1 "k8s.io/api/core/v1"
-
 type FailoverMode string
 
 const (
@@ -33,12 +31,18 @@ type FailoverConfig interface {
 type FailoverETCD2Config interface {
 	GetEndpoints() []string
 	GetUsername() string
-	GetPassword() v1.SecretReference
+	GetPassword() SecretKeyReference
 	GetLockDelay() int32
 	GetPrefix() string
 }
 
 type FailoverStateboardConfig interface {
 	GetURI() string
-	GetPassword() v1.SecretReference
+	GetPassword() SecretKeyReference
+}
+
+type SecretKeyReference interface {
+	GetNamespace() string
+	GetName() string
+	GetKey() string
 }

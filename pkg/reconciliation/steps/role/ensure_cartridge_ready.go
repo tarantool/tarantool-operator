@@ -1,6 +1,8 @@
 package role
 
 import (
+	"time"
+
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	. "github.com/tarantool/tarantool-operator/pkg/reconciliation"
 	"github.com/tarantool/tarantool-operator/pkg/utils"
@@ -14,10 +16,14 @@ func (r *EnsureCartridgeReadyStep[RoleType, CtxType, CtrlType]) GetName() string
 
 func (r *EnsureCartridgeReadyStep[RoleType, CtxType, CtrlType]) Reconcile(ctx CtxType, ctrl CtrlType) (*Result, error) {
 	allPodsRunning, err := r.IsCartridgeReady(ctx, ctrl)
-	if err != nil || !allPodsRunning {
+	if err != nil {
+		return Error(err)
+	}
+
+	if !allPodsRunning {
 		ctx.GetLogger().Info("Not all pods of role are running. Wait for it.")
 
-		return Error(err)
+		return Requeue(time.Second * 10)
 	}
 
 	return NextStep()
@@ -42,16 +48,29 @@ func (r *EnsureCartridgeReadyStep[RoleType, CtxType, CtrlType]) IsCartridgeReady
 	readyCount := int32(0)
 
 	for key := range pods.Items {
-		if utils.IsPodDeleting(&pods.Items[key]) {
+		pod := &pods.Items[key]
+
+		if utils.IsPodDeleting(pod) {
 			continue
 		}
 
-		if !utils.IsPodDefaultContainerReady(&pods.Items[key]) {
+		if !utils.IsPodRunning(pod) {
+			continue
+		}
+
+		started, err := ctrl.GetTopology().IsCartridgeStarted(ctx, pod)
+		if err != nil {
+			return false, err
+		}
+
+		if !started {
 			continue
 		}
 
 		readyCount++
 	}
+
+	role.SetReadyPodsCount(readyCount)
 
 	return readyCount >= expectedCount, nil
 }

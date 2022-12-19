@@ -2,7 +2,6 @@ package v1beta1
 
 import (
 	"github.com/tarantool/tarantool-operator/pkg/api"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -121,7 +120,7 @@ type FailoverEtcd2 struct {
 
 	// Password for etcd2 connection
 	// +optional
-	Password corev1.SecretReference `json:"password"`
+	Password SecretKeyReference `json:"password"`
 
 	// LockDelay - Timeout (in seconds), determines lock’s time-to-live (default: 10)
 	// +kubebuilder:default=10
@@ -141,8 +140,8 @@ func (in *FailoverEtcd2) GetUsername() string {
 	return in.Username
 }
 
-func (in *FailoverEtcd2) GetPassword() corev1.SecretReference {
-	return in.Password
+func (in *FailoverEtcd2) GetPassword() api.SecretKeyReference {
+	return &in.Password
 }
 
 func (in *FailoverEtcd2) GetLockDelay() int32 {
@@ -162,15 +161,41 @@ type FailoverStateboard struct {
 
 	// Password for etcd2 connection
 	// +optional
-	Password corev1.SecretReference `json:"password"`
+	Password SecretKeyReference `json:"password"`
 }
 
 func (in *FailoverStateboard) GetURI() string {
 	return in.URI
 }
 
-func (in *FailoverStateboard) GetPassword() corev1.SecretReference {
-	return in.Password
+func (in *FailoverStateboard) GetPassword() api.SecretKeyReference {
+	return &in.Password
+}
+
+// SecretKeyReference represents a reference to filed in Secret. It has enough information to retrieve a value secret in any namespace.
+// +structType=atomic
+type SecretKeyReference struct {
+	// Namespace defines the space within which the secret name must be unique.
+	// +optional
+	Namespace string `json:"namespace"`
+	// Name is unique within a namespace to reference a secret resource.
+	// +optional
+	Name string `json:"name"`
+	// Key is unique within a Secret to reference a value.
+	// +optional
+	Key string `json:"key"`
+}
+
+func (in *SecretKeyReference) GetNamespace() string {
+	return in.Namespace
+}
+
+func (in *SecretKeyReference) GetName() string {
+	return in.Name
+}
+
+func (in *SecretKeyReference) GetKey() string {
+	return in.Key
 }
 
 // ClusterPhase is a label for the condition of a Cluster at the current time.

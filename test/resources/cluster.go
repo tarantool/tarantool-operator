@@ -11,3 +11,9 @@ func (r *FakeCartridge) Bootstrapped() *FakeCartridge {
 
 	return r
 }
+
+func (r *FakeCartridge) WithLeader(leaderName string) *FakeCartridge {
+	r.Cluster.Status.Leader = leaderName
+
+	return r
+}

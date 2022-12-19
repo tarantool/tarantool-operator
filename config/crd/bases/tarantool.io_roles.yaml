@@ -3459,20 +3459,8 @@ spec:
     - jsonPath: .status.phase
       name: Phase
       type: string
-    - jsonPath: .status.replicasets
-      name: Replicasets
-      priority: 1
-      type: number
-    - jsonPath: .status.readyReplicasets
-      name: Ready replicasets
-      priority: 1
-      type: number
-    - jsonPath: .status.replicas
-      name: Replicas
-      priority: 1
-      type: number
-    - jsonPath: .status.readyReplicas
-      name: Ready replicas
+    - jsonPath: .status.readyPods
+      name: Pods
       priority: 1
       type: number
     - jsonPath: .status.weight
@@ -6833,8 +6821,11 @@ spec:
               phase:
                 default: Pending
                 type: string
+              readyPods:
+                type: string
             required:
             - phase
+            - readyPods
             type: object
         required:
         - metadata

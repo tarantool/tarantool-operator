@@ -74,6 +74,7 @@ func NewCartridgeConfigReconciler(mgr Manager) *CartridgeConfigReconciler {
 							Client:           k8sClient,
 							Recorder:         eventsRecorder,
 							ResourcesManager: resourcesManager,
+							Topology:         luaTopology,
 						},
 						ResourcesManager: resourcesManager,
 						EventsRecorder:   eventsRecorder,

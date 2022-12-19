@@ -105,3 +105,15 @@ func (f *FakeCartridgeTopology) ApplyCartridgeConfig(ctx context.Context, leader
 
 	return args.Error(0)
 }
+
+func (f *FakeCartridgeTopology) IsCartridgeStarted(ctx context.Context, pod *v1.Pod) (bool, error) {
+	args := f.Called(ctx, pod)
+
+	return args.Bool(0), args.Error(1)
+}
+
+func (f *FakeCartridgeTopology) IsCartridgeConfigured(ctx context.Context, pod *v1.Pod) (bool, error) {
+	args := f.Called(ctx, pod)
+
+	return args.Bool(0), args.Error(1)
+}

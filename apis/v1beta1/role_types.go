@@ -124,6 +124,9 @@ type RoleStatus struct {
 	// Phase of roles
 	// +kubebuilder:default=Pending
 	Phase RolePhase `json:"phase"`
+
+	// ReadyPods a string in format "ready_pods_count/total_pods_count" for printable column
+	ReadyPods string `json:"readyPods"`
 }
 
 // Role is the Schema for the roles API
@@ -131,10 +134,7 @@ type RoleStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:storageversion
 // +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase",priority=0
-// +kubebuilder:printcolumn:name="Replicasets",type="number",JSONPath=".status.replicasets",priority=1
-// +kubebuilder:printcolumn:name="Ready replicasets",type="number",JSONPath=".status.readyReplicasets",priority=1
-// +kubebuilder:printcolumn:name="Replicas",type="number",JSONPath=".status.replicas",priority=1
-// +kubebuilder:printcolumn:name="Ready replicas",type="number",JSONPath=".status.readyReplicas",priority=1
+// +kubebuilder:printcolumn:name="Pods",type="number",JSONPath=".status.readyPods",priority=1
 // +kubebuilder:printcolumn:name="Weight",type="number",JSONPath=".status.weight",priority=0
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",priority=0
 // +k8s:openapi-gen=true
@@ -169,6 +169,10 @@ func (in *Role) GetVolumeClaimTemplates() []v1.PersistentVolumeClaim {
 
 func (in *Role) ResetStatus() {
 	in.Status = RoleStatus{}
+}
+
+func (in *Role) SetReadyPodsCount(count int32) {
+	in.Status.ReadyPods = fmt.Sprintf("%d/%d", count, in.GetReplicasets()*in.GetReplicas())
 }
 
 func (in *Role) SetPhase(phase RolePhase) {
