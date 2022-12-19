@@ -21,7 +21,7 @@ func TestParseTarantoolOutputParseRoles(t *testing.T) {
 		{
 			input: `---
 - ok: true
-  hex: 5b226661696c6f7665722d636f6f7264696e61746f72222c227673686172642d726f75746572222c226170702e726f6c65732e726f75746572225d
+  res: WyJmYWlsb3Zlci1jb29yZGluYXRvciIsInZzaGFyZC1yb3V0ZXIiLCJhcHAucm9sZXMucm91dGVyIl0=
 ...`,
 			expectedResult: []string{"failover-coordinator", "vshard-router", "app.roles.router"},
 			err:            "",
@@ -29,7 +29,7 @@ func TestParseTarantoolOutputParseRoles(t *testing.T) {
 		{
 			input: `---
 - ok: true
-  hex: 5B226661696C6F7665722D636F6F7264696E61746F72225D
+  res: WyJmYWlsb3Zlci1jb29yZGluYXRvciJd
 ...`,
 			expectedResult: []string{"failover-coordinator"},
 			err:            "",
@@ -37,7 +37,7 @@ func TestParseTarantoolOutputParseRoles(t *testing.T) {
 		{
 			input: `---
 - ok: true
-  hex: 5B5D
+  res: W10=
 ...`,
 			expectedResult: []string{},
 			err:            "",
@@ -45,7 +45,7 @@ func TestParseTarantoolOutputParseRoles(t *testing.T) {
 		{
 			input: `---
 - ok: true
-  hex: 226572726F7222
+  res: ImVycm9yIg==
 ...`,
 			expectedResult: []string{},
 			err:            "json: cannot unmarshal string into Go value of type []string",
