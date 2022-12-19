@@ -128,9 +128,6 @@ func (r *ReplicasetsManger) createStatefulSet(ctx context.Context, cluster api.C
 			VolumeClaimTemplates: role.Spec.ReplicasetTemplate.VolumeClaimTemplates,
 			ServiceName:          cluster.GetName(),
 			PodManagementPolicy:  appsv1.ParallelPodManagement,
-			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
-				Type: appsv1.OnDeleteStatefulSetStrategyType,
-			},
 			RevisionHistoryLimit: &revisionHistoryLimit,
 			PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
 				WhenDeleted: appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
@@ -218,6 +215,28 @@ func (r *ReplicasetsManger) syncStatefulSet(
 		sts.Spec.MinReadySeconds = role.Spec.ReplicasetTemplate.MinReadySeconds
 
 		changed = true
+	}
+
+	if role.Spec.ReplicasetTemplate.UpdateStrategy.Type != sts.Spec.UpdateStrategy.Type {
+		sts.Spec.UpdateStrategy.Type = role.Spec.ReplicasetTemplate.UpdateStrategy.Type
+
+		changed = true
+	}
+
+	if sts.Spec.UpdateStrategy.Type == appsv1.OnDeleteStatefulSetStrategyType {
+		if sts.Spec.UpdateStrategy.RollingUpdate != nil {
+			sts.Spec.UpdateStrategy.RollingUpdate = nil
+
+			changed = true
+		}
+	}
+
+	if sts.Spec.UpdateStrategy.Type == appsv1.RollingUpdateStatefulSetStrategyType {
+		if !cmp.Equal(role.Spec.ReplicasetTemplate.UpdateStrategy.RollingUpdate, sts.Spec.UpdateStrategy.RollingUpdate) {
+			sts.Spec.UpdateStrategy.RollingUpdate = role.Spec.ReplicasetTemplate.UpdateStrategy.RollingUpdate
+
+			changed = true
+		}
 	}
 
 	// If current hash of pod template stored in StatefulSet labels does not match

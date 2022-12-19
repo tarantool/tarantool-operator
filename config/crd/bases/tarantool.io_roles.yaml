@@ -6632,6 +6632,22 @@ spec:
                     default: 1
                     format: int32
                     type: integer
+                  updateStrategy:
+                    properties:
+                      rollingUpdate:
+                        properties:
+                          maxUnavailable:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
+                          partition:
+                            format: int32
+                            type: integer
+                        type: object
+                      type:
+                        type: string
+                    type: object
                   volumeClaimTemplates:
                     items:
                       properties:
@@ -6791,6 +6807,8 @@ spec:
                           type: object
                       type: object
                     type: array
+                required:
+                - updateStrategy
                 type: object
               replicasets:
                 default: 1
