@@ -62,7 +62,7 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 					continue
 				}
 
-				if !utils.IsPodRunning(pod) || !utils.IsPodDefaultContainerReady(pod) {
+				if !utils.IsPodRunning(pod) || utils.IsPodDeleting(pod) {
 					allJoined = false
 
 					continue
@@ -79,7 +79,7 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 					vshard := role.GetVShardConfig()
 
 					alias, err := role.GetReplicasetName(stsOrdinal)
-					if uuidErr != nil {
+					if err != nil {
 						return Error(err)
 					}
 
