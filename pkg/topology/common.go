@@ -379,7 +379,7 @@ func (r *CommonCartridgeTopology) ApplyCartridgeConfig(ctx context.Context, lead
 	end
 
 	return cartridge.config_patch_clusterwide(safeConfig)
-`
+	`
 
 	var res bool
 
@@ -393,4 +393,62 @@ func (r *CommonCartridgeTopology) ApplyCartridgeConfig(ctx context.Context, lead
 	}
 
 	return nil
+}
+
+func (r *CommonCartridgeTopology) IsCartridgeStarted(ctx context.Context, pod *v1.Pod) (bool, error) {
+	// language=lua
+	lua := `
+		local confapplier = require('cartridge.confapplier')
+		local state = confapplier.get_state()
+
+		if state == '' then
+			return { res = false, err=nil }
+		end
+
+		if state == 'InitError' or state == 'BootError' or state == 'OperationError' or state == 'ReloadError' then
+			return { res = false, err=nil }
+		end
+
+		return { res = true, err=nil }
+	`
+
+	var res *BooleanResult
+
+	err := r.Exec(ctx, pod, &res, lua)
+	if err != nil {
+		return false, errors.Wrap(err, "unable to retrieve instance state")
+	}
+
+	if res.Err != nil {
+		return res.Res, errors.Wrap(res.Err, "unable to retrieve instance state")
+	}
+
+	return res.Res, nil
+}
+
+func (r *CommonCartridgeTopology) IsCartridgeConfigured(ctx context.Context, pod *v1.Pod) (bool, error) {
+	// language=lua
+	lua := `
+		local confapplier = require('cartridge.confapplier')
+		local state = confapplier.get_state()
+
+		if state ~= 'RolesConfigured' then
+			return { res = false, err=nil }
+		end
+
+		return { res = true, err=nil }
+	`
+
+	var res *BooleanResult
+
+	err := r.Exec(ctx, pod, &res, lua)
+	if err != nil {
+		return false, errors.Wrap(err, "unable to retrieve instance state")
+	}
+
+	if res.Err != nil {
+		return res.Res, errors.Wrap(res.Err, "unable to retrieve instance state")
+	}
+
+	return res.Res, nil
 }

@@ -32,6 +32,8 @@ type Role interface {
 	GetVShardConfig() VShardConfig
 
 	ResetStatus()
+
+	SetReadyPodsCount(count int32)
 }
 
 type VShardConfig interface {

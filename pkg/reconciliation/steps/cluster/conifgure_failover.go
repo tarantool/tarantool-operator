@@ -2,9 +2,12 @@ package cluster
 
 import (
 	"github.com/google/go-cmp/cmp"
+	"github.com/pkg/errors"
 	"github.com/tarantool/tarantool-operator/pkg/api"
 	. "github.com/tarantool/tarantool-operator/pkg/reconciliation"
 	"github.com/tarantool/tarantool-operator/pkg/topology"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type ConfigureFailoverStep[ClusterType api.Cluster, CtxType ClusterContext[ClusterType], CtrlType ClusterController] struct{}
@@ -65,59 +68,82 @@ func (r *ConfigureFailoverStep[ClusterType, CtxType, CtrlType]) LoadFailoverPara
 	}
 
 	if config.GetMode() == api.FailoverModeStateful {
+		var (
+			secret   *corev1.Secret
+			password []byte
+			err      error
+			ok       bool
+		)
+
 		switch config.GetStateProvider() {
 		case api.FailoverStateProviderETCD2:
-			var (
-				etcd2Password string
-				err           error
-			)
-
 			etcd2config := config.GetETCD2Config()
 			etcd2PasswordRef := etcd2config.GetPassword()
 
-			if etcd2PasswordRef.Name != "" {
-				etcd2Password, err = ctrl.GetResourcesManager().GetSecretValue(
-					ctx,
-					etcd2PasswordRef.Namespace,
-					etcd2PasswordRef.Name,
-					"etcd2-password", // fixme: make not hardcoded
-				)
+			if etcd2PasswordRef.GetName() != "" {
+				secret, err = ctrl.GetResourcesManager().GetSecret(ctx, etcd2PasswordRef.GetNamespace(), etcd2PasswordRef.GetName())
 				if err != nil {
 					return nil, err
+				}
+
+				etcd2secretKey := etcd2PasswordRef.GetKey()
+				if etcd2secretKey == "" {
+					etcd2secretKey = "etcd2-password"
+				}
+
+				password, ok = secret.Data[etcd2secretKey]
+				if !ok {
+					return nil, errors.New("no such key")
 				}
 			}
 
 			params.Etcd2Params = &topology.Etcd2Params{
 				Endpoints: etcd2config.GetEndpoints(),
 				Username:  etcd2config.GetUsername(),
-				Password:  etcd2Password,
+				Password:  string(password),
 				LockDelay: etcd2config.GetLockDelay(),
 				Prefix:    etcd2config.GetPrefix(),
 			}
 		case api.FailoverStateProviderStateboard:
-			var (
-				stateboardPassword string
-				err                error
-			)
-
 			stateboardConfig := config.GetStateboardConfig()
 			stateboardPasswordRef := stateboardConfig.GetPassword()
 
-			if stateboardPasswordRef.Name != "" {
-				stateboardPassword, err = ctrl.GetResourcesManager().GetSecretValue(
+			if stateboardPasswordRef.GetName() != "" {
+				secret, err = ctrl.GetResourcesManager().GetSecret(
 					ctx,
-					stateboardPasswordRef.Namespace,
-					stateboardPasswordRef.Name,
-					"stateboard-password", // fixme: make not hardcoded
+					stateboardPasswordRef.GetNamespace(),
+					stateboardPasswordRef.GetName(),
 				)
 				if err != nil {
 					return nil, err
+				}
+
+				stateboardSecretKey := stateboardPasswordRef.GetKey()
+				if stateboardSecretKey == "" {
+					stateboardSecretKey = "stateboard-password"
+				}
+
+				password, ok = secret.Data[stateboardSecretKey]
+				if !ok {
+					return nil, errors.New("no such key")
 				}
 			}
 
 			params.StateboardParams = &topology.StateboardParams{
 				URI:      stateboardConfig.GetURI(),
-				Password: stateboardPassword,
+				Password: string(password),
+			}
+		}
+
+		if secret != nil {
+			err = controllerutil.SetOwnerReference(ctx.GetCluster(), secret, ctrl.GetScheme())
+			if err != nil {
+				return nil, err
+			}
+
+			err = ctrl.Update(ctx, secret)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}

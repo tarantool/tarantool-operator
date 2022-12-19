@@ -37,4 +37,7 @@ type CartridgeTopology interface {
 
 	GetCartridgeConfig(ctx context.Context, leader *v1.Pod) (CartridgeConfigData, error)
 	ApplyCartridgeConfig(ctx context.Context, leader *v1.Pod, config CartridgeConfigData) error
+
+	IsCartridgeStarted(ctx context.Context, pod *v1.Pod) (bool, error)
+	IsCartridgeConfigured(ctx context.Context, pod *v1.Pod) (bool, error)
 }
