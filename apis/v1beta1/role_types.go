@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tarantool/tarantool-operator/pkg/api"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -65,6 +66,10 @@ type ReplicasetTemplate struct {
 	// +optional
 	// +kubebuilder:default=0
 	MinReadySeconds int32 `json:"minReadySeconds,omitempty"`
+
+	// UpdateStrategy indicates the StatefulSetUpdateStrategy that will be
+	// employed to update Pods in each StatefulSet of role when template is changed
+	UpdateStrategy appsv1.StatefulSetUpdateStrategy `json:"updateStrategy"`
 }
 
 // RoleVShardConfig defines config for vshard
