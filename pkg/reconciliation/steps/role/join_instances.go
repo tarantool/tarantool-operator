@@ -120,7 +120,7 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 							return Complete()
 						}
 
-						return Error(err)
+						return Error(joinErr)
 					}
 				}
 			}
