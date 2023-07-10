@@ -50,9 +50,9 @@ func (r *LeaderElection) GetLeaderInstance(ctx context.Context, cluster api.Clus
 			if cluster.IsBootstrapped() {
 				return r.ElectLeaderInstance(ctx, cluster)
 			}
-
-			return nil, err
 		}
+
+		return nil, err
 	}
 
 	return leader, nil
