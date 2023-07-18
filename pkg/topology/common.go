@@ -432,7 +432,7 @@ func (r *CommonCartridgeTopology) IsCartridgeConfigured(ctx context.Context, pod
 		local confapplier = require('cartridge.confapplier')
 		local state = confapplier.get_state()
 
-		if state ~= 'RolesConfigured' then
+		if state ~= 'RolesConfigured' and state ~= 'OperationError' then
 			return { res = false, err=nil }
 		end
 
