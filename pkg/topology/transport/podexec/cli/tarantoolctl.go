@@ -13,8 +13,8 @@ import (
 )
 
 type TarantoolCTLResult struct {
-	Ok  bool   `json:"ok"`
-	Res string `json:"res"`
+	Ok  bool   `json:"ok"  yaml:"ok"`
+	Res string `json:"res" yaml:"res"`
 }
 
 type TarantoolCTL struct{}

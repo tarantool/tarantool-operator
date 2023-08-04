@@ -30,6 +30,8 @@ linters:
     - gocognit # Need to refactor 2 functions
     - nestif # Need to refactor 2 functions
     - goimports # see https://github.com/golangci/golangci-lint/issues/1490
+    - depguard
+    - nakedret
 
     # Not acceptable at all
     - gochecknoinits

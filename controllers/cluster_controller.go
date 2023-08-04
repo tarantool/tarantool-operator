@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/go-logr/logr"
 	. "github.com/tarantool/tarantool-operator/apis/v1beta1"
 	. "github.com/tarantool/tarantool-operator/internal"
@@ -19,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/types"
-	"net/http"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
