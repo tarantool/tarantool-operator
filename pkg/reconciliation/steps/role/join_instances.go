@@ -72,10 +72,25 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 				if uuidErr != nil {
 					ctx.GetLogger().Error(uuidErr, "unable to get instance uuid")
 
-					return Error(err)
+					return Error(uuidErr)
 				}
 
 				if instanceUUID == "" {
+					leader := ctx.GetLeader()
+
+					if leader.Name != pod.Name {
+						switch leaderUUID, uuidErr := topologyClient.GetInstanceUUID(ctx, leader); {
+						case uuidErr != nil:
+							ctx.GetLogger().Error(uuidErr, "unable to get leader instance uuid")
+
+							return Error(uuidErr)
+						case leaderUUID == "":
+							allJoined = false
+
+							continue
+						}
+					}
+
 					vshard := role.GetVShardConfig()
 
 					alias, err := role.GetReplicasetName(stsOrdinal)
@@ -85,7 +100,7 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 
 					joinErr := topologyClient.Join(
 						ctx,
-						ctx.GetLeader(),
+						leader,
 						alias,
 						ctrl.GetReplicasetsManger().GetReplicasetUUID(role, stsOrdinal),
 						vshard.GetRoles(),
@@ -105,7 +120,7 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 							return Complete()
 						}
 
-						return Error(err)
+						return Error(joinErr)
 					}
 				}
 			}
