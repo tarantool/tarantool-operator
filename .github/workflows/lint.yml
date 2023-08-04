@@ -22,5 +22,5 @@ jobs:
       - name: Lint the code
         uses: golangci/golangci-lint-action@v3
         with:
-          args: -v --timeout 2m --config .golangci.yml
+          args: -v --timeout 5m --config .golangci.yml
           version: v1.53.3
