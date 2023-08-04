@@ -62,7 +62,8 @@ func (r *FakeCartridge) NewFakeClientBuilder() *fake.ClientBuilder {
 	fakeClientBuilder := fake.NewClientBuilder()
 
 	return fakeClientBuilder.
-		WithObjects(r.objects...)
+		WithObjects(r.objects...).
+		WithStatusSubresource(r.objects...)
 }
 
 func (r *FakeCartridge) BuildFakeClient() client.WithWatch {

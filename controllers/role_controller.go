@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -40,6 +41,7 @@ func NewRoleReconciler(mgr Manager) *RoleReconciler {
 		false,
 		k8sConfig,
 		serializer.NewCodecFactory(k8sScheme),
+		&http.Client{},
 	)
 
 	labelsManager := &k8s.NamespacedLabelsManager{

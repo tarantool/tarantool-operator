@@ -89,5 +89,8 @@ func (r *FakeCartridge) setPodRunning(pod *v1.Pod) {
 
 func (r *FakeCartridge) setPodDeleting(pod *v1.Pod) {
 	now := metav1.Now()
+	pod.Finalizers = []string{
+		"testing",
+	}
 	pod.DeletionTimestamp = &now
 }

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/go-logr/logr"
 	. "github.com/tarantool/tarantool-operator/apis/v1beta1"
@@ -24,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 //+kubebuilder:rbac:groups=tarantool.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -54,6 +54,7 @@ func NewClusterReconciler(mgr Manager) *ClusterReconciler {
 		false,
 		k8sConfig,
 		serializer.NewCodecFactory(k8sScheme),
+		&http.Client{},
 	)
 
 	labelsManager := &k8s.NamespacedLabelsManager{
@@ -145,8 +146,15 @@ func (r *ClusterReconciler) SetupWithManager(mgr Manager) error {
 	return NewControllerManagedBy(mgr).
 		For(&Cluster{}).
 		Owns(&v1.Service{}).
-		Watches(&source.Kind{Type: &v1.Secret{}}, &handler.EnqueueRequestForOwner{OwnerType: &Cluster{}, IsController: false}).
-		Watches(&source.Kind{Type: &Role{}}, handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		Watches(
+			&v1.Secret{},
+			handler.EnqueueRequestForOwner(
+				mgr.GetScheme(),
+				mgr.GetRESTMapper(),
+				&Cluster{},
+			),
+		).
+		Watches(&Role{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 			role, ok := obj.(*Role)
 			if !ok {
 				return []Request{}
