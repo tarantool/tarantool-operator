@@ -30,8 +30,14 @@ func (r *CommonCartridgeTopology) Join(
 	replicasetWeight int32,
 	replicasetVshardGroup string,
 	replicasetIsAllRw bool,
-	advertiseURI string,
+	advertiseURIs ...string,
 ) error {
+	joinServers := make([]JoinServerParams, len(advertiseURIs))
+
+	for i, uri := range advertiseURIs {
+		joinServers[i].URI = uri
+	}
+
 	editTopology := EditTopologyParams{
 		Replicasets: []EditReplicasetParams{
 			{
@@ -41,9 +47,7 @@ func (r *CommonCartridgeTopology) Join(
 				Weight:      replicasetWeight,
 				VShardGroup: replicasetVshardGroup,
 				AllRw:       replicasetIsAllRw,
-				JoinServers: []JoinServerParams{{
-					URI: advertiseURI,
-				}},
+				JoinServers: joinServers,
 			},
 		},
 	}

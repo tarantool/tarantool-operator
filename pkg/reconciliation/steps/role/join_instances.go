@@ -10,6 +10,7 @@ import (
 	"github.com/tarantool/tarantool-operator/pkg/utils"
 	v1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/utils/strings/slices"
 )
 
 type JoinInstancesStep[
@@ -42,6 +43,8 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 			return Error(err)
 		}
 
+		var advertiseURIs []string
+
 		for key := range stsList.Items {
 			sts := &stsList.Items[key]
 			if sts.GetDeletionTimestamp() != nil {
@@ -58,14 +61,16 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 					}
 
 					allJoined = false
+					advertiseURIs = nil
 
-					continue
+					break
 				}
 
 				if !utils.IsPodRunning(pod) || utils.IsPodDeleting(pod) {
 					allJoined = false
+					advertiseURIs = nil
 
-					continue
+					break
 				}
 
 				instanceUUID, uuidErr := topologyClient.GetInstanceUUID(ctx, pod)
@@ -76,54 +81,60 @@ func (r *JoinInstancesStep[PhaseType, RoleType, CtxType, CtrlType]) Reconcile(ct
 				}
 
 				if instanceUUID == "" {
-					leader := ctx.GetLeader()
-
-					if leader.Name != pod.Name {
-						switch leaderUUID, uuidErr := topologyClient.GetInstanceUUID(ctx, leader); {
-						case uuidErr != nil:
-							ctx.GetLogger().Error(uuidErr, "unable to get leader instance uuid")
-
-							return Error(uuidErr)
-						case leaderUUID == "":
-							allJoined = false
-
-							continue
-						}
-					}
-
-					vshard := role.GetVShardConfig()
-
-					alias, err := role.GetReplicasetName(stsOrdinal)
-					if err != nil {
-						return Error(err)
-					}
-
-					joinErr := topologyClient.Join(
-						ctx,
-						leader,
-						alias,
-						ctrl.GetReplicasetsManger().GetReplicasetUUID(role, stsOrdinal),
-						vshard.GetRoles(),
-						vshard.GetWeight(),
-						vshard.GetGroupName(),
-						role.IsAllRw(),
-						ctrl.GetReplicasetsManger().GetAdvertiseURI(cluster, pod),
-					)
-					if joinErr != nil {
-						ctx.GetLogger().Error(joinErr, "unable to join instance")
-
-						var configErr *topology.UnknownRoleError
-						if errors.As(joinErr, &configErr) {
-							ctrl.GetEventsRecorder().Event(role, NewWrongVShardRolesEvent(configErr))
-							role.SetPhase(r.ConfigErrorPhase)
-
-							return Complete()
-						}
-
-						return Error(joinErr)
-					}
+					advertiseURIs = append(advertiseURIs, ctrl.GetReplicasetsManger().GetAdvertiseURI(cluster, pod))
 				}
 			}
+		}
+
+		if len(advertiseURIs) == 0 {
+			continue
+		}
+
+		leader := ctx.GetLeader()
+
+		if !slices.Contains(advertiseURIs, ctrl.GetReplicasetsManger().GetAdvertiseURI(cluster, leader)) {
+			switch leaderUUID, uuidErr := topologyClient.GetInstanceUUID(ctx, leader); {
+			case uuidErr != nil:
+				ctx.GetLogger().Error(uuidErr, "unable to get leader instance uuid")
+
+				return Error(uuidErr)
+			case leaderUUID == "":
+				allJoined = false
+
+				continue
+			}
+		}
+
+		vshard := role.GetVShardConfig()
+
+		alias, err := role.GetReplicasetName(stsOrdinal)
+		if err != nil {
+			return Error(err)
+		}
+
+		joinErr := topologyClient.Join(
+			ctx,
+			leader,
+			alias,
+			ctrl.GetReplicasetsManger().GetReplicasetUUID(role, stsOrdinal),
+			vshard.GetRoles(),
+			vshard.GetWeight(),
+			vshard.GetGroupName(),
+			role.IsAllRw(),
+			advertiseURIs...,
+		)
+		if joinErr != nil {
+			ctx.GetLogger().Error(joinErr, "unable to join instance")
+
+			var configErr *topology.UnknownRoleError
+			if errors.As(joinErr, &configErr) {
+				ctrl.GetEventsRecorder().Event(role, NewWrongVShardRolesEvent(configErr))
+				role.SetPhase(r.ConfigErrorPhase)
+
+				return Complete()
+			}
+
+			return Error(joinErr)
 		}
 	}
 
