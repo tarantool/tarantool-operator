@@ -29,7 +29,7 @@ func (f *FakeCartridgeTopology) Join(
 	replicasetWeight int32,
 	replicasetVshardGroup string,
 	replicasetIsAllRw bool,
-	advertiseURI string,
+	advertiseURI ...string,
 ) error {
 	args := f.Called(
 		ctx,

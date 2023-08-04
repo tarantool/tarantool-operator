@@ -19,7 +19,7 @@ type CartridgeTopology interface {
 		replicasetWeight int32,
 		replicasetVshardGroup string,
 		replicasetIsAllRw bool,
-		advertiseURI string,
+		advertiseURIs ...string,
 	) error
 
 	GetInstanceUUID(ctx context.Context, pod *v1.Pod) (string, error)
