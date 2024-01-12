@@ -2,7 +2,7 @@
 
 ## Disclaimer 
 
-Where is no "kubernetes"-way to upgrade from ~0.0.* to ≥1.0.0-rc1.
+There is no "kubernetes"-way to upgrade from ~0.0.* to ≥1.0.0-rc1.
 
 Although this guide provides comprehensive information about the upgrade process, 
 it will be useful for you to understand the basic concepts of [tarantool cartridge](https://github.com/tarantool/cartridge), [vshard](https://github.com/tarantool/vshard), [kubernetes](https://kubernetes.io/) and [helm](https://helm.sh/).
